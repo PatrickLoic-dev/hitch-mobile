@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/services/document_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class SelfieWithLicencePage extends StatefulWidget {
@@ -15,6 +18,32 @@ class SelfieWithLicencePage extends StatefulWidget {
 class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
   File? _selfieImageFile;
   final ImagePicker _picker = ImagePicker();
+  final DocumentService _documentService = DocumentService();
+
+  Future<void> _uploadSelfie(File file) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final accountId = authProvider.user?.accountId;
+
+    if (accountId == null) return;
+
+    try {
+      await _documentService.uploadDocument(
+        filePath: file.path,
+        documentName: "Selfie with License",
+        accountId: accountId,
+        fileType: "SELFIE_WITH_LICENSE",
+        issueDate: DateTime.now(),
+      );
+      print('Selfie uploaded successfully');
+    } catch (e) {
+      print('Failed to upload selfie: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _openCamera() async {
     try {
@@ -25,13 +54,13 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
       );
 
       if (capturedImage != null) {
+        final file = File(capturedImage.path);
         setState(() {
-          _selfieImageFile = File(capturedImage.path);
+          _selfieImageFile = file;
         });
-        print('Image captured from camera: ${capturedImage.path}');
+        _uploadSelfie(file);
       }
     } catch (e) {
-      print('Failed to capture image from camera: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to access camera: $e')),
@@ -45,15 +74,13 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
 
       if (pickedFile != null) {
+        final file = File(pickedFile.path);
         setState(() {
-          _selfieImageFile = File(pickedFile.path);
+          _selfieImageFile = file;
         });
-        print('Image selected from gallery: ${pickedFile.path}');
-      } else {
-        print('No image selected from gallery.');
+        _uploadSelfie(file);
       }
     } catch (e) {
-      print('Failed to pick image from gallery: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to access photos: $e')),
@@ -66,10 +93,9 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
     setState(() {
       _selfieImageFile = null;
     });
-    print('Selfie image deleted');
   }
 
-  void _uploadSelfie() {
+  void _uploadSelfieAction() {
     _showImageSourceModal();
   }
 
@@ -126,9 +152,6 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
   }
 
   void _submitVerification() {
-    print('Submitting verification with:');
-    print('Selfie image file: ${_selfieImageFile?.path}');
-
     final homeContext = context;
 
     showModalBottomSheet(
@@ -220,7 +243,7 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
               _UploadBox(
                 iconPath: 'assets/images/upload-icon.png',
                 text: 'Upload an image',
-                onTap: _uploadSelfie,
+                onTap: _uploadSelfieAction,
                 imageFile: _selfieImageFile,
                 onDelete: _deleteImage,
               ),

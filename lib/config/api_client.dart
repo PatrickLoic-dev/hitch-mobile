@@ -4,7 +4,13 @@ import 'constants.dart';
 
 class ApiClient {
   final Dio _dio = Dio();
-  final _storage = const FlutterSecureStorage();
+  
+  // Use the same encrypted storage options as AuthProvider
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
 
   ApiClient() {
     _dio.options.baseUrl = ApiConstants.baseUrl;
@@ -17,11 +23,9 @@ class ApiClient {
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        // You can handle responses here
         return handler.next(response);
       },
       onError: (DioException e, handler) {
-        // You can handle errors here, e.g., token refresh
         return handler.next(e);
       },
     ));

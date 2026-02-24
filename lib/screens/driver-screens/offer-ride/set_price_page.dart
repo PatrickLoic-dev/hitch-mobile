@@ -34,21 +34,31 @@ class _SetPricePageState extends State<SetPricePage> {
         ),
         title: Column(
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tripProvider.departure?.mainText ?? '',
-                  style: const TextStyle(color: Colors.orange, fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  tripProvider.destination?.mainText ?? '',
-                  style: const TextStyle(color: Colors.orange, fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      tripProvider.departure?.mainText ?? '',
+                      style: const TextStyle(color: Colors.orange, fontSize: 14, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
+                  ),
+                  Flexible(
+                    child: Text(
+                      tripProvider.destination?.mainText ?? '',
+                      style: const TextStyle(color: Colors.orange, fontSize: 14, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
             Text(
               tripInfo,

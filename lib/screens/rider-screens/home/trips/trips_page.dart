@@ -6,6 +6,7 @@ import 'package:Hitch/enums/trip_detail_status.enum.dart';
 import 'package:Hitch/providers/trip_provider.dart';
 import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/models/booking.dart';
+import 'package:Hitch/models/ride.dart';
 import 'package:Hitch/screens/registration/driver_verification/proof_of_identity_page.dart';
 
 //Personnal components
@@ -98,26 +99,28 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
                   return TabBarView(
                     controller: _tabController,
                     children: <Widget>[
+                      // "Booked" Tab
                       RefreshIndicator(
                         onRefresh: () => tripProvider.fetchTrips(),
                         child: TabContentWithSubTabs(
-                          upcomingTrips: tripProvider.upcomingTrips,
-                          pastTrips: tripProvider.pastTrips,
+                          upcomingContent: _buildBookingsList(tripProvider.upcomingBookings),
+                          pastContent: _buildBookingsList(tripProvider.pastBookings, isPast: true),
                         ),
                       ),
                       // "Published" Tab
                       isPassenger 
                         ? _buildPassengerPublishedState(context)
                         : RefreshIndicator(
-                            onRefresh: _dummyOnRefresh,
-                            child: const TabContentWithSubTabs(
-                              upcomingTrips: [],
-                              pastTrips: [],
+                            onRefresh: () => tripProvider.fetchTrips(),
+                            child: TabContentWithSubTabs(
+                              upcomingContent: _buildPublishedRidesList(tripProvider.upcomingPublishedRides),
+                              pastContent: _buildPublishedRidesList(tripProvider.pastPublishedRides, isPast: true),
                             ),
                           ),
+                      // "Active" Tab
                       RefreshIndicator(
                         onRefresh: () => tripProvider.fetchTrips(),
-                        child: _buildActiveTripsList(tripProvider.trips.where((t) => t.status.name == 'ON_TRIP').toList()),
+                        child: _buildActiveTripsList(tripProvider.activeTrips),
                       ),
                     ],
                   );
@@ -130,7 +133,104 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
     );
   }
 
-  static Future<void> _dummyOnRefresh() async {}
+  Widget _buildBookingsList(List<Booking> bookings, {bool isPast = false}) {
+    if (bookings.isEmpty) {
+      return EmptyStateWidget(
+        title: isPast ? 'No past bookings' : 'No upcoming bookings',
+        description: isPast ? 'Your completed bookings will appear here' : 'Book a ride and it will appear here',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      itemCount: bookings.length,
+      itemBuilder: (context, index) {
+        final booking = bookings[index];
+        final ride = booking.rideDetails;
+        if (isPast) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: PastRideCard(
+              pickUpLocation: ride?.startingLocation ?? "Unknown",
+              dropOffLocation: ride?.destination ?? "Unknown",
+              dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
+              price: "XAF ${booking.totalAmount}",
+              status: booking.status.name == 'COMPLETED' ? RideStatus.completed : RideStatus.cancelled,
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => TripDetailPage(status: booking.status.name == 'COMPLETED' ? TripDetailStatus.completed : TripDetailStatus.cancelled),
+                ));
+              },
+            ),
+          );
+        } else {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: UpcomingRideCard(
+              pickUpLocation: ride?.startingLocation ?? "Unknown",
+              dropOffLocation: ride?.destination ?? "Unknown",
+              dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
+              price: "XAF ${booking.totalAmount}",
+              driverName: "Driver",
+              driverAvatar: 'assets/images/default-avatar.jpg',
+              vehicleModel: 'Unknown',
+              vehiclePlate: 'Unknown',
+              status: booking.status.name == 'CONFIRMED' ? UpcomingRideStatus.confirmed : UpcomingRideStatus.awaiting,
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => TripDetailPage(status: booking.status.name == 'CONFIRMED' ? TripDetailStatus.confirmed : TripDetailStatus.awaitingConfirmation),
+                ));
+              },
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildPublishedRidesList(List<Ride> rides, {bool isPast = false}) {
+    if (rides.isEmpty) {
+      return EmptyStateWidget(
+        title: isPast ? 'No past published rides' : 'No upcoming published rides',
+        description: isPast ? 'Your completed offers will appear here' : 'Offer a ride and it will appear here',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      itemCount: rides.length,
+      itemBuilder: (context, index) {
+        final ride = rides[index];
+        if (isPast) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: PastRideCard(
+              pickUpLocation: ride.startingLocation,
+              dropOffLocation: ride.destination,
+              dateTime: DateFormat('d MMM, hh:mm a').format(ride.departureTime),
+              price: "XAF ${ride.price}",
+              status: RideStatus.completed, // Assuming past is completed
+              onTap: () {},
+            ),
+          );
+        } else {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: UpcomingRideCard(
+              pickUpLocation: ride.startingLocation,
+              dropOffLocation: ride.destination,
+              dateTime: DateFormat('d MMM, hh:mm a').format(ride.departureTime),
+              price: "XAF ${ride.price}",
+              driverName: "You",
+              driverAvatar: 'assets/images/default-avatar.jpg',
+              vehicleModel: ride.vehicle,
+              vehiclePlate: "My Plate",
+              status: UpcomingRideStatus.confirmed,
+              onTap: () {},
+            ),
+          );
+        }
+      },
+    );
+  }
 
   Widget _buildPassengerPublishedState(BuildContext context) {
     return Center(
@@ -218,13 +318,13 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
 }
 
 class TabContentWithSubTabs extends StatefulWidget {
-  final List<Booking> upcomingTrips;
-  final List<Booking> pastTrips;
+  final Widget upcomingContent;
+  final Widget pastContent;
 
   const TabContentWithSubTabs({
     super.key,
-    required this.upcomingTrips,
-    required this.pastTrips,
+    required this.upcomingContent,
+    required this.pastContent,
   });
 
   @override
@@ -259,78 +359,10 @@ class _TabContentWithSubTabsState extends State<TabContentWithSubTabs> {
         ),
         Expanded(
           child: _selectedSubTabIndex == 0
-              ? _buildUpcomingList()
-              : _buildPastList(),
+              ? widget.upcomingContent
+              : widget.pastContent,
         ),
       ],
-    );
-  }
-
-  Widget _buildUpcomingList() {
-    if (widget.upcomingTrips.isEmpty) {
-      return const EmptyStateWidget(
-        title: 'No upcoming rides',
-        description: 'Book a ride and they will appear here',
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-      itemCount: widget.upcomingTrips.length,
-      itemBuilder: (context, index) {
-        final trip = widget.upcomingTrips[index];
-        final ride = trip.rideDetails;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: UpcomingRideCard(
-            pickUpLocation: ride?.startingLocation ?? "Unknown",
-            dropOffLocation: ride?.destination ?? "Unknown",
-            dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
-            price: "XAF ${trip.totalAmount}",
-            driverName: "Driver",
-            driverAvatar: 'assets/images/default-avatar.jpg',
-            vehicleModel: 'Unknown',
-            vehiclePlate: 'Unknown',
-            status: trip.status.name == 'CONFIRMED' ? UpcomingRideStatus.confirmed : UpcomingRideStatus.awaiting,
-            onTap: () {
-               Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => TripDetailPage(status: trip.status.name == 'CONFIRMED' ? TripDetailStatus.confirmed : TripDetailStatus.awaitingConfirmation),
-              ));
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPastList() {
-    if (widget.pastTrips.isEmpty) {
-      return const EmptyStateWidget(
-        title: 'No past rides',
-        description: 'Your completed rides will appear here',
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-      itemCount: widget.pastTrips.length,
-      itemBuilder: (context, index) {
-        final trip = widget.pastTrips[index];
-        final ride = trip.rideDetails;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: PastRideCard(
-            pickUpLocation: ride?.startingLocation ?? "Unknown",
-            dropOffLocation: ride?.destination ?? "Unknown",
-            dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
-            price: "XAF ${trip.totalAmount}",
-            status: trip.status.name == 'COMPLETED' ? RideStatus.completed : RideStatus.cancelled,
-            onTap: () {
-               Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => TripDetailPage(status: trip.status.name == 'COMPLETED' ? TripDetailStatus.completed : TripDetailStatus.cancelled),
-              ));
-            },
-          ),
-        );
-      },
     );
   }
 }

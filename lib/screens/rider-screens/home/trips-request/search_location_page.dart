@@ -82,13 +82,19 @@ class _SearchLocationPageState extends State<SearchLocationPage> {
       final response = await http.get(uri);
       if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
+        print('Google Places API Response: ${json.encode(data)}'); // PRINTING THE RESULT
+        
         if (data['status'] == 'OK') {
           setState(() {
             _suggestions = (data['predictions'] as List)
                 .map((p) => PlaceSuggestion.fromJson(p))
                 .toList();
           });
+        } else {
+          print('Google Places API Error Status: ${data['status']}');
         }
+      } else {
+        print('Google Places API Request failed with status: ${response.statusCode}');
       }
     } catch (e) {
       print("Erreur de connexion : $e");
@@ -312,4 +318,3 @@ class _SearchLocationPageState extends State<SearchLocationPage> {
     );
   }
 }
-

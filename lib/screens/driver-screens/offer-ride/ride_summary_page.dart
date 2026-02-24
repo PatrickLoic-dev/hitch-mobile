@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import 'package:Hitch/components/button.dart';
 import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/providers/trip_request_provider.dart';
 import 'package:Hitch/services/ride_service.dart';
+import 'package:Hitch/services/map_service.dart';
 import 'package:Hitch/navigation/main_shell.dart';
 
 class RideSummaryPage extends StatefulWidget {
@@ -17,11 +17,11 @@ class RideSummaryPage extends StatefulWidget {
 
 class _RideSummaryPageState extends State<RideSummaryPage> {
   bool _isPublishing = false;
+  final MapService _mapService = MapService();
 
   @override
   Widget build(BuildContext context) {
     final tripProvider = Provider.of<TripRequestProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
     final rideService = RideService();
 
     final DateFormat timeFormatter = DateFormat('hh:mm a');
@@ -87,19 +87,19 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
                   _buildSummaryDetail(
                     icon: Icons.access_time,
                     label: 'Depart',
-                    value: timeFormatter.format(tripProvider.dateTime!),
+                    value: tripProvider.dateTime != null ? timeFormatter.format(tripProvider.dateTime!) : '--:--',
                   ),
                   const SizedBox(height: 12),
                   _buildSummaryDetail(
                     icon: Icons.person_outline,
                     label: 'Seats available',
-                    value: tripProvider.seatCount.toString(),
+                    value: tripProvider.seatCount?.toString() ?? '0',
                   ),
                   const SizedBox(height: 12),
                   _buildSummaryDetail(
                     icon: Icons.payments_outlined,
                     label: 'Price/seat',
-                    value: 'XAF ${tripProvider.price?.toStringAsFixed(2)}',
+                    value: 'XAF ${tripProvider.price?.toStringAsFixed(2) ?? '0.00'}',
                   ),
                 ],
               ),
@@ -111,19 +111,26 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFFA6EB2E)))
                   : Button(
                       onPressed: () async {
+                        if (tripProvider.departure == null || tripProvider.destination == null || tripProvider.dateTime == null) {
+                          return;
+                        }
+
                         setState(() => _isPublishing = true);
                         try {
+                          // Calculate real distance using MapService
+                          final double distance = await _mapService.getDistance(
+                            tripProvider.departure!.placeId, 
+                            tripProvider.destination!.placeId
+                          );
+
                           final rideData = {
-                            "ride_id": const Uuid().v4(),
                             "starting_location": tripProvider.departure!.mainText,
                             "destination": tripProvider.destination!.mainText,
                             "price": tripProvider.price ?? 0.0,
-                            "vehicle": "My Vehicle", // Placeholder
+                            "vehicle": "My Vehicle",
                             "seats": tripProvider.seatCount,
                             "departure_time": tripProvider.dateTime!.toIso8601String(),
-                            "distance": 0.0, // Placeholder
-                            "created_By": authProvider.user?.accountId ?? "unknown",
-                            "created_at": DateTime.now().toIso8601String(),
+                            "distance": distance,
                           };
 
                           await rideService.createRide(rideData);
@@ -132,13 +139,16 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Ride published successfully!')),
                             );
-                            tripProvider.clearTrip();
+                            
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(builder: (context) => const MainShell()),
                               (route) => false,
                             );
+                            
+                            tripProvider.clearTrip();
                           }
                         } catch (e) {
+                          print('Error publishing ride: $e');
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Error: ${e.toString()}')),

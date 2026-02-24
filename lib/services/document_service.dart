@@ -7,7 +7,7 @@ import '../models/documents.dart';
 class DocumentService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<Documents> uploadDocument({
+  Future<Documents?> uploadDocument({
     required String filePath,
     required String documentName,
     required String accountId,
@@ -28,7 +28,15 @@ class DocumentService {
         ApiConstants.documents,
         data: formData,
       );
-      return Documents.fromJson(response.data);
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return Documents.fromJson(data);
+      } else if (data is List && data.isNotEmpty) {
+        return Documents.fromJson(data[0] as Map<String, dynamic>);
+      }
+      
+      return null;
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -46,7 +54,11 @@ class DocumentService {
   Future<List<Documents>> getDocumentsByAccount(String accountId) async {
     try {
       final response = await _apiClient.dio.get('${ApiConstants.documents}/account/$accountId');
-      return (response.data as List).map((json) => Documents.fromJson(json)).toList();
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Documents.fromJson(json)).toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -73,9 +85,18 @@ class DocumentService {
   }
 
   Exception _handleError(DioException e) {
+    String message = 'Server error';
     if (e.response != null) {
-      return Exception(e.response?.data['message'] ?? 'Server error');
+      final data = e.response?.data;
+      if (data is Map) {
+        message = data['message'] ?? data['error'] ?? 'Server error';
+      } else if (data is String && data.isNotEmpty) {
+        message = data;
+      }
+      print('DocumentService Error Response: $data');
+    } else {
+      message = 'Network error: ${e.message}';
     }
-    return Exception('Network error');
+    return Exception(message);
   }
 }

@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
-
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/services/document_service.dart';
 import 'package:Hitch/screens/registration/driver_verification/custom_camera_page.dart';
 import 'package:Hitch/screens/registration/driver_verification/selfie_with_licence_page.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,25 +20,54 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
   File? _frontImageFile;
   File? _backImageFile;
   final ImagePicker _picker = ImagePicker();
+  final DocumentService _documentService = DocumentService();
+
+  Future<void> _uploadFile(File file, String name, String type) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final accountId = authProvider.user?.accountId;
+
+    if (accountId == null) return;
+
+    try {
+      await _documentService.uploadDocument(
+        filePath: file.path,
+        documentName: name,
+        accountId: accountId,
+        fileType: type,
+        issueDate: DateTime.now(),
+      );
+      print('Document uploaded successfully: $name');
+    } catch (e) {
+      print('Failed to upload document: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _openCustomCamera({required bool isFront}) async {
-    // Navigue vers la page de la caméra et attend un résultat de type XFile
     final XFile? capturedImage = await Navigator.of(context).push<XFile>(
       MaterialPageRoute(
         builder: (context) => CustomCameraPage(isFront: isFront),
       ),
     );
 
-    // Si une image a été capturée et retournée, on met à jour l'état
     if (capturedImage != null) {
+      final file = File(capturedImage.path);
       setState(() {
         if (isFront) {
-          _frontImageFile = File(capturedImage.path);
+          _frontImageFile = file;
         } else {
-          _backImageFile = File(capturedImage.path);
+          _backImageFile = file;
         }
       });
-      print('Image captured via custom camera: ${capturedImage.path}');
+      _uploadFile(
+        file, 
+        isFront ? "Driver License Front" : "Driver License Back", 
+        isFront ? "LICENSE_FRONT" : "LICENSE_BACK"
+      );
     }
   }
 
@@ -45,19 +76,21 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
 
       if (pickedFile != null) {
+        final file = File(pickedFile.path);
         setState(() {
           if (isFront) {
-            _frontImageFile = File(pickedFile.path);
+            _frontImageFile = file;
           } else {
-            _backImageFile = File(pickedFile.path);
+            _backImageFile = file;
           }
         });
-        print('Image selected from gallery: ${pickedFile.path}');
-      } else {
-        print('No image selected from gallery.');
+        _uploadFile(
+          file, 
+          isFront ? "Driver License Front" : "Driver License Back", 
+          isFront ? "LICENSE_FRONT" : "LICENSE_BACK"
+        );
       }
     } catch (e) {
-      print('Failed to pick image from gallery: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to access photos: $e')),
@@ -74,15 +107,6 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
         _backImageFile = null;
       }
     });
-    print('Image deleted for ${isFront ? "front" : "back"}');
-  }
-
-  void _uploadFrontImage() {
-    _showImageSourceModal(isFront: true);
-  }
-
-  void _uploadBackImage() {
-    _showImageSourceModal(isFront: false);
   }
 
   void _showImageSourceModal({required bool isFront}) {
@@ -116,7 +140,6 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
                     label: 'Camera',
                     onTap: () {
                       Navigator.of(modalContext).pop();
-                      // APPEL DE LA CAMÉRA PERSONNALISÉE
                       _openCustomCamera(isFront: isFront);
                     },
                   ),
@@ -126,7 +149,6 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
                     label: 'Library',
                     onTap: () {
                       Navigator.of(modalContext).pop();
-                      // APPEL DE LA GALERIE
                       _pickFromGallery(isFront: isFront);
                     },
                   ),
@@ -140,10 +162,6 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
   }
 
   void _continue() {
-    print('Continuing to the next step with:');
-    print('Front image file: ${_frontImageFile?.path}');
-    print('Back image file: ${_backImageFile?.path}');
-    // TODO: Implémenter la navigation et l'upload des fichiers
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SelfieWithLicencePage()),
     );
@@ -201,7 +219,7 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
                     child: _UploadBox(
                       iconPath: 'assets/images/upload-icon.png',
                       text: 'Upload an image of the front of your document',
-                      onTap: _uploadFrontImage,
+                      onTap: () => _showImageSourceModal(isFront: true),
                       imageFile: _frontImageFile,
                       onDelete: () => _deleteImage(isFront: true),
                     ),
@@ -211,7 +229,7 @@ class _ProofOfIdentityPageState extends State<ProofOfIdentityPage> {
                     child: _UploadBox(
                       iconPath: 'assets/images/upload-icon.png',
                       text: 'Upload an image of the back of your document',
-                      onTap: _uploadBackImage,
+                      onTap: () => _showImageSourceModal(isFront: false),
                       imageFile: _backImageFile,
                       onDelete: () => _deleteImage(isFront: false),
                     ),

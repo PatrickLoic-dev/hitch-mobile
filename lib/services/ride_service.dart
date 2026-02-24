@@ -9,11 +9,43 @@ class RideService {
 
   Future<Ride> createRide(Map<String, dynamic> rideData) async {
     try {
+      print('Sending ride data: $rideData');
       final response = await _apiClient.dio.post(
         ApiConstants.rides,
         data: rideData,
       );
-      return Ride.fromJson(response.data);
+      
+      print('Server response status: ${response.statusCode}');
+      final data = response.data;
+      
+      if (data is List && data.isNotEmpty) {
+        return Ride.fromJson(data[0] as Map<String, dynamic>);
+      } else if (data is Map) {
+        return Ride.fromJson(data as Map<String, dynamic>);
+      } else {
+        throw Exception("Invalid response format: Expected Map or List but got ${data.runtimeType}");
+      }
+    } on DioException catch (e) {
+      print('Dio error in createRide: ${e.message}');
+      if (e.response != null) {
+        print('Response status: ${e.response?.statusCode}');
+        print('Response data: ${e.response?.data}');
+      }
+      throw _handleError(e);
+    } catch (e) {
+      print('Unexpected error in createRide: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Ride>> getMyRides() async {
+    try {
+      final response = await _apiClient.dio.get('${ApiConstants.rides}/me');
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Ride.fromJson(json)).toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -22,7 +54,6 @@ class RideService {
   Future<List<Ride>> searchRides({
     required String startingLocation,
     required String destination,
-    required double price,
     required int seats,
     required DateTime departureTime,
   }) async {
@@ -32,12 +63,18 @@ class RideService {
         queryParameters: {
           'starting_location': startingLocation,
           'destination': destination,
-          'price': price,
           'seats': seats,
           'departure_time': DateFormat('yyyy-MM-dd').format(departureTime),
         },
       );
-      return (response.data as List).map((json) => Ride.fromJson(json)).toList();
+      
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Ride.fromJson(json)).toList();
+      } else if (data is Map && data['rides'] is List) {
+        return (data['rides'] as List).map((json) => Ride.fromJson(json)).toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -61,7 +98,14 @@ class RideService {
           if (size != null) 'size': size,
         },
       );
-      return (response.data as List).map((json) => Ride.fromJson(json)).toList();
+      
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Ride.fromJson(json)).toList();
+      } else if (data is Map && data['rides'] is List) {
+        return (data['rides'] as List).map((json) => Ride.fromJson(json)).toList();
+      }
+      return [];
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -88,9 +132,17 @@ class RideService {
   }
 
   Exception _handleError(DioException e) {
+    String message = 'Server error';
     if (e.response != null) {
-      return Exception(e.response?.data['message'] ?? 'Server error');
+      final data = e.response?.data;
+      if (data is Map) {
+        message = data['message'] ?? data['error'] ?? 'Server error';
+      } else if (data is String && data.isNotEmpty) {
+        message = data;
+      }
+    } else {
+      message = 'Network error: ${e.message}';
     }
-    return Exception('Network error');
+    return Exception(message);
   }
 }

@@ -25,16 +25,26 @@ class Ride {
 
   factory Ride.fromJson(Map<String, dynamic> json) {
     return Ride(
-      rideId: json['ride_id'],
-      startingLocation: json['starting_location'],
-      destination: json['destination'],
-      price: (json['price'] as num).toDouble(),
-      vehicle: json['vehicle'],
-      seats: json['seats'],
-      departureTime: DateTime.parse(json['departure_time']),
-      distance: (json['distance'] as num).toDouble(),
-      createdBy: json['created_By'],
-      createdAt: DateTime.parse(json['created_at']),
+      rideId: json['ride_id']?.toString() ?? '',
+      startingLocation: json['starting_location']?.toString() ?? '',
+      destination: json['destination']?.toString() ?? '',
+      price: (json['price'] is String) 
+          ? double.tryParse(json['price']) ?? 0.0 
+          : (json['price'] as num?)?.toDouble() ?? 0.0,
+      vehicle: json['vehicle']?.toString() ?? '',
+      seats: (json['seats'] is String) 
+          ? int.tryParse(json['seats']) ?? 0 
+          : (json['seats'] as num?)?.toInt() ?? 0,
+      departureTime: json['departure_time'] != null 
+          ? DateTime.parse(json['departure_time']) 
+          : DateTime.now(),
+      distance: (json['distance'] is String) 
+          ? double.tryParse(json['distance']) ?? 0.0 
+          : (json['distance'] as num?)?.toDouble() ?? 0.0,
+      createdBy: json['created_By']?.toString() ?? '',
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : DateTime.now(),
     );
   }
 

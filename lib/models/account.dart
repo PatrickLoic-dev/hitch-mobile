@@ -29,19 +29,23 @@ class Account {
 
   factory Account.fromJson(Map<String, dynamic> json) {
     return Account(
-      accountId: json['account_id'],
-      phoneNumber: json['phone_number'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      role: json['role'],
-      isActive: json['is_active'],
-      isVerified: json['is_verified'],
+      accountId: json['account_id']?.toString() ?? '',
+      phoneNumber: json['phone_number'] is int ? json['phone_number'] : (int.tryParse(json['phone_number']?.toString() ?? '0') ?? 0),
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'PASSENGER',
+      isActive: json['is_active'] ?? false,
+      isVerified: json['is_verified'] ?? false,
       profilePicturePath: json['profile_picture_path'],
       documents: json['documents'] != null
           ? (json['documents'] as List).map((i) => Documents.fromJson(i)).toList()
           : null,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at']) 
+          : DateTime.now(),
     );
   }
 

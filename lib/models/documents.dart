@@ -22,13 +22,18 @@ class Documents {
 
   factory Documents.fromJson(Map<String, dynamic> json) {
     return Documents(
-      documentId: json['document_id'],
-      documentName: json['document_name'],
-      filePath: json['filePath'],
-      fileType: json['file_type'],
-      status: DocumentStatus.values.firstWhere((e) => e.name == json['status']),
-      account: Account.fromJson(json['account']),
-      issueDate: DateTime.parse(json['issue_date']),
+      documentId: json['document_id']?.toString() ?? '',
+      documentName: json['document_name']?.toString() ?? '',
+      filePath: json['filePath']?.toString() ?? '',
+      fileType: json['file_type']?.toString() ?? '',
+      status: DocumentStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => DocumentStatus.PENDING,
+      ),
+      account: Account.fromJson(json['account'] ?? {}),
+      issueDate: json['issue_date'] != null 
+          ? DateTime.parse(json['issue_date']) 
+          : DateTime.now(),
     );
   }
 

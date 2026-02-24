@@ -94,9 +94,10 @@ class AccountPage extends StatelessWidget {
 
     final String fullName = '${user.firstName} ${user.lastName}';
     final String memberSince = DateFormat('yyyy').format(user.createdAt);
-    final int tripCount = tripProvider.trips.length;
+    
+    // Updated to use bookings and published rides
+    final int tripCount = tripProvider.bookings.length + tripProvider.publishedRides.length;
 
-    // Construct the correct profile picture URL based on your new endpoint
     final String profilePicUrl = "${ApiConstants.baseUrl}/accounts/${user.accountId}/profile-picture";
 
     return Scaffold(
@@ -123,7 +124,6 @@ class AccountPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 20),
-              // Profile Picture
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -134,8 +134,6 @@ class AccountPage extends StatelessWidget {
                     onBackgroundImageError: (exception, stackTrace) {
                       print('Error loading profile picture: $exception');
                     },
-                    // Fallback using child if NetworkImage fails or is loading
-                    child: null, 
                   ),
                   if (user.isVerified)
                     Container(
