@@ -21,19 +21,25 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    // Debug log to see the keys returned by backend
+    print('Booking.fromJson keys: ${json.keys.toList()}');
+    print('Booking.fromJson data: $json');
+
     return Booking(
-      bookingId: json['booking_id'],
+      bookingId: (json['booking_id'] ?? json['id'] ?? '').toString(),
       ride: json['ride'] is Map<String, dynamic> 
           ? Ride.fromJson(json['ride']) 
           : json['ride'],
-      seatsReserved: json['seats_reserved'],
+      seatsReserved: (json['seats_reserved'] as num?)?.toInt() ?? 0,
       status: BookingStatus.values.firstWhere(
         (e) => e.name == json['status'], 
         orElse: () => BookingStatus.AWAITING_CONFIRMATION
       ),
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      bookedBy: json['booked_by'],
-      bookingDate: DateTime.parse(json['booking_date']),
+      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      bookedBy: (json['booked_by'] ?? '').toString(),
+      bookingDate: json['booking_date'] != null 
+          ? DateTime.parse(json['booking_date']) 
+          : (json['bookingDate'] != null ? DateTime.parse(json['bookingDate']) : DateTime.now()),
     );
   }
 

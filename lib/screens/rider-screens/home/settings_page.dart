@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/screens/rider-screens/home/vehicle_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isDriver = authProvider.user?.role == 'DRIVER';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -28,6 +34,11 @@ class SettingsPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
         children: [
           _buildSettingsRow(Icons.person_outline, 'Edit Profile', onTap: () {}),
+          // Only show My Vehicle for DRIVERS
+          if (isDriver)
+            _buildSettingsRow(Icons.directions_car_outlined, 'My Vehicle', onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const VehiclePage()));
+            }),
           _buildSettingsRow(Icons.notifications_outlined, 'Notifications', onTap: () {}),
           _buildSettingsRow(Icons.lock_outline, 'Privacy', onTap: () {}),
           _buildSettingsRow(Icons.credit_card, 'Payment Methods', onTap: () {}),

@@ -252,14 +252,17 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
                                   ),
                                 );
                               }
-                            } on AccountExistsException {
+                            } on AccountExistsException catch (e) {
+                              print('Authentication Error: Account Already Exists - $e'); // LOGGING THE ERROR
                               if (mounted) _showAccountExistsModal(context);
-                            } on AccountNotFoundException {
+                            } on AccountNotFoundException catch (e) {
+                              print('Authentication Error: Account Not Found - $e'); // LOGGING THE ERROR
                               if (mounted) _showAccountNotFoundModal(context);
                             } catch (e) {
+                              print('Authentication Error: Unexpected Exception - $e'); // LOGGING THE ERROR
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
+                                  SnackBar(content: Text('Error: ${e.toString()}')),
                                 );
                               }
                             }

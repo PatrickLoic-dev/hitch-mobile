@@ -6,6 +6,18 @@ import '../models/vehicle.dart';
 class VehicleService {
   final ApiClient _apiClient = ApiClient();
 
+  Future<Vehicle?> getMyVehicle() async {
+    try {
+      final response = await _apiClient.dio.get('${ApiConstants.vehicles}/my-vehicle');
+      return Vehicle.fromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      throw _handleError(e);
+    }
+  }
+
   Future<Vehicle> addVehicle(String accountId, Map<String, dynamic> vehicleData) async {
     try {
       final response = await _apiClient.dio.post(
@@ -50,7 +62,12 @@ class VehicleService {
 
   Exception _handleError(DioException e) {
     if (e.response != null) {
-      return Exception(e.response?.data['message'] ?? 'Server error');
+      final data = e.response?.data;
+      String message = 'Server error';
+      if (data is Map) {
+        message = data['message'] ?? data['error'] ?? 'Server error';
+      }
+      return Exception(message);
     }
     return Exception('Network error');
   }

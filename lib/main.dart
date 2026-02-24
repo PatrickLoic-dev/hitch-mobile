@@ -7,6 +7,7 @@ import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/providers/trip_provider.dart';
 import 'package:Hitch/providers/trip_request_provider.dart';
 import 'package:Hitch/providers/user_provider.dart';
+import 'package:Hitch/providers/vehicle_provider.dart';
 import 'package:Hitch/screens/registration/enter_number_page.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => UserProvider()),
         ChangeNotifierProvider(create: (context) => TripRequestProvider()),
         ChangeNotifierProvider(create: (context) => TripProvider()),
+        ChangeNotifierProvider(create: (context) => VehicleProvider()),
       ],
       child: MaterialApp(
         title: 'Hitch',

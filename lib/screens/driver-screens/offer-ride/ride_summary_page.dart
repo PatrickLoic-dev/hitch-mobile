@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:Hitch/components/button.dart';
 import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/providers/trip_request_provider.dart';
+import 'package:Hitch/providers/trip_provider.dart';
+import 'package:Hitch/providers/vehicle_provider.dart';
 import 'package:Hitch/services/ride_service.dart';
 import 'package:Hitch/services/map_service.dart';
 import 'package:Hitch/navigation/main_shell.dart';
@@ -22,6 +24,8 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
   @override
   Widget build(BuildContext context) {
     final tripProvider = Provider.of<TripRequestProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final vehicleProvider = Provider.of<VehicleProvider>(context);
     final rideService = RideService();
 
     final DateFormat timeFormatter = DateFormat('hh:mm a');
@@ -117,7 +121,6 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
 
                         setState(() => _isPublishing = true);
                         try {
-                          // Calculate real distance using MapService
                           final double distance = await _mapService.getDistance(
                             tripProvider.departure!.placeId, 
                             tripProvider.destination!.placeId
@@ -127,10 +130,11 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
                             "starting_location": tripProvider.departure!.mainText,
                             "destination": tripProvider.destination!.mainText,
                             "price": tripProvider.price ?? 0.0,
-                            "vehicle": "My Vehicle",
+                            "vehicle": vehicleProvider.vehicle?.model ?? "My Vehicle",
                             "seats": tripProvider.seatCount,
                             "departure_time": tripProvider.dateTime!.toIso8601String(),
                             "distance": distance,
+                            "created_By": authProvider.user?.accountId,
                           };
 
                           await rideService.createRide(rideData);
@@ -139,6 +143,8 @@ class _RideSummaryPageState extends State<RideSummaryPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Ride published successfully!')),
                             );
+                            
+                            Provider.of<TripProvider>(context, listen: false).fetchTrips();
                             
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(builder: (context) => const MainShell()),

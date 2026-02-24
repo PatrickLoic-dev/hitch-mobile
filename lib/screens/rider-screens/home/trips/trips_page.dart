@@ -7,6 +7,7 @@ import 'package:Hitch/providers/trip_provider.dart';
 import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/models/booking.dart';
 import 'package:Hitch/models/ride.dart';
+import 'package:Hitch/config/constants.dart';
 import 'package:Hitch/screens/registration/driver_verification/proof_of_identity_page.dart';
 
 //Personnal components
@@ -92,37 +93,34 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
             Expanded(
               child: Consumer<TripProvider>(
                 builder: (context, tripProvider, child) {
-                  if (tripProvider.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  return TabBarView(
-                    controller: _tabController,
-                    children: <Widget>[
-                      // "Booked" Tab
-                      RefreshIndicator(
-                        onRefresh: () => tripProvider.fetchTrips(),
-                        child: TabContentWithSubTabs(
+                  return RefreshIndicator(
+                    onRefresh: () => tripProvider.fetchTrips(),
+                    color: const Color(0xFFF2640E),
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: <Widget>[
+                        // "Booked" Tab
+                        TabContentWithSubTabs(
+                          onRefresh: () => tripProvider.fetchTrips(),
                           upcomingContent: _buildBookingsList(tripProvider.upcomingBookings),
                           pastContent: _buildBookingsList(tripProvider.pastBookings, isPast: true),
                         ),
-                      ),
-                      // "Published" Tab
-                      isPassenger 
-                        ? _buildPassengerPublishedState(context)
-                        : RefreshIndicator(
-                            onRefresh: () => tripProvider.fetchTrips(),
-                            child: TabContentWithSubTabs(
-                              upcomingContent: _buildPublishedRidesList(tripProvider.upcomingPublishedRides),
-                              pastContent: _buildPublishedRidesList(tripProvider.pastPublishedRides, isPast: true),
+                        // "Published" Tab
+                        isPassenger 
+                          ? _buildPassengerPublishedState(context, tripProvider)
+                          : TabContentWithSubTabs(
+                              onRefresh: () => tripProvider.fetchTrips(),
+                              upcomingContent: _buildPublishedRidesList(context, tripProvider.upcomingPublishedRides),
+                              pastContent: _buildPublishedRidesList(context, tripProvider.pastPublishedRides, isPast: true),
                             ),
-                          ),
-                      // "Active" Tab
-                      RefreshIndicator(
-                        onRefresh: () => tripProvider.fetchTrips(),
-                        child: _buildActiveTripsList(tripProvider.activeTrips),
-                      ),
-                    ],
+                        // "Active" Tab
+                        RefreshIndicator(
+                          onRefresh: () => tripProvider.fetchTrips(),
+                          color: const Color(0xFFF2640E),
+                          child: _buildActiveTripsList(tripProvider.activeTrips),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
@@ -135,12 +133,19 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
 
   Widget _buildBookingsList(List<Booking> bookings, {bool isPast = false}) {
     if (bookings.isEmpty) {
-      return EmptyStateWidget(
-        title: isPast ? 'No past bookings' : 'No upcoming bookings',
-        description: isPast ? 'Your completed bookings will appear here' : 'Book a ride and it will appear here',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh on empty list
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          EmptyStateWidget(
+            title: isPast ? 'No past bookings' : 'No upcoming bookings',
+            description: isPast ? 'Your completed bookings will appear here' : 'Book a ride and it will appear here',
+          ),
+        ],
       );
     }
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       itemCount: bookings.length,
       itemBuilder: (context, index) {
@@ -187,14 +192,28 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildPublishedRidesList(List<Ride> rides, {bool isPast = false}) {
+  Widget _buildPublishedRidesList(BuildContext context, List<Ride> rides, {bool isPast = false}) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    
+    final String selfAvatarUrl = user != null 
+        ? "${ApiConstants.baseUrl}/accounts/${user.accountId}/profile-picture"
+        : 'assets/images/default-avatar.jpg';
+
     if (rides.isEmpty) {
-      return EmptyStateWidget(
-        title: isPast ? 'No past published rides' : 'No upcoming published rides',
-        description: isPast ? 'Your completed offers will appear here' : 'Offer a ride and it will appear here',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          EmptyStateWidget(
+            title: isPast ? 'No past published rides' : 'No upcoming published rides',
+            description: isPast ? 'Your completed offers will appear here' : 'Offer a ride and it will appear here',
+          ),
+        ],
       );
     }
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       itemCount: rides.length,
       itemBuilder: (context, index) {
@@ -207,7 +226,7 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
               dropOffLocation: ride.destination,
               dateTime: DateFormat('d MMM, hh:mm a').format(ride.departureTime),
               price: "XAF ${ride.price}",
-              status: RideStatus.completed, // Assuming past is completed
+              status: RideStatus.completed,
               onTap: () {},
             ),
           );
@@ -220,9 +239,9 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
               dateTime: DateFormat('d MMM, hh:mm a').format(ride.departureTime),
               price: "XAF ${ride.price}",
               driverName: "You",
-              driverAvatar: 'assets/images/default-avatar.jpg',
+              driverAvatar: selfAvatarUrl,
               vehicleModel: ride.vehicle,
-              vehiclePlate: "My Plate",
+              vehiclePlate: ride.vehicle, // Using vehicle name as placeholder for plate
               status: UpcomingRideStatus.confirmed,
               onTap: () {},
             ),
@@ -232,65 +251,82 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildPassengerPublishedState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'You haven’t offered any rides yet.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Jokker',
-              ),
-            ),
-            const SizedBox(height: 12),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey.shade600,
-                  fontFamily: 'Jokker',
-                ),
+  Widget _buildPassengerPublishedState(BuildContext context, TripProvider tripProvider) {
+    return RefreshIndicator(
+      onRefresh: () => tripProvider.fetchTrips(),
+      color: const Color(0xFFF2640E),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const TextSpan(text: 'To offer a ride you need to undergo '),
-                  TextSpan(
-                    text: 'driver verification',
-                    style: const TextStyle(
-                      color: Color(0xFFF2640E),
-                      decoration: TextDecoration.underline,
+                  const Text(
+                    'You haven’t offered any rides yet.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Jokker',
                     ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const ProofOfIdentityPage(),
+                  ),
+                  const SizedBox(height: 12),
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey.shade600,
+                        fontFamily: 'Jokker',
+                      ),
+                      children: [
+                        const TextSpan(text: 'To offer a ride you need to undergo '),
+                        TextSpan(
+                          text: 'driver verification',
+                          style: const TextStyle(
+                            color: Color(0xFFF2640E),
+                            decoration: TextDecoration.underline,
                           ),
-                        );
-                      },
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const ProofOfIdentityPage(),
+                                ),
+                              );
+                            },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildActiveTripsList(List<Booking> activeTrips) {
      if (activeTrips.isEmpty) {
-      return const EmptyStateWidget(
-        title: 'No active rides',
-        description: 'Your current rides will appear here',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          const EmptyStateWidget(
+            title: 'No active rides',
+            description: 'Your current rides will appear here',
+          ),
+        ],
       );
     }
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       itemCount: activeTrips.length,
       itemBuilder: (context, index) {
@@ -320,11 +356,13 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
 class TabContentWithSubTabs extends StatefulWidget {
   final Widget upcomingContent;
   final Widget pastContent;
+  final Future<void> Function() onRefresh;
 
   const TabContentWithSubTabs({
     super.key,
     required this.upcomingContent,
     required this.pastContent,
+    required this.onRefresh,
   });
 
   @override
@@ -358,9 +396,13 @@ class _TabContentWithSubTabsState extends State<TabContentWithSubTabs> {
           ),
         ),
         Expanded(
-          child: _selectedSubTabIndex == 0
-              ? widget.upcomingContent
-              : widget.pastContent,
+          child: RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            color: const Color(0xFFF2640E),
+            child: _selectedSubTabIndex == 0
+                ? widget.upcomingContent
+                : widget.pastContent,
+          ),
         ),
       ],
     );

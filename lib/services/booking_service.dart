@@ -29,10 +29,23 @@ class BookingService {
 
   Future<List<Booking>> getUserBookings() async {
     try {
-      // Assuming the backend returns the current user's bookings based on the token
       final response = await _apiClient.dio.get('${ApiConstants.bookings}/me');
-      return (response.data as List).map((json) => Booking.fromJson(json)).toList();
+      final data = response.data;
+
+      if (data is List) {
+        return data.map((json) => Booking.fromJson(json)).toList();
+      } else if (data is Map) {
+        if (data['bookings'] is List) {
+          return (data['bookings'] as List).map((json) => Booking.fromJson(json)).toList();
+        }
+        print('getUserBookings: Info/Error received: ${data['message'] ?? data['error']}');
+        return [];
+      }
+      return [];
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
+        return [];
+      }
       throw _handleError(e);
     }
   }
@@ -40,8 +53,13 @@ class BookingService {
   Future<List<Booking>> getBookingsByAccount(String accountId) async {
     try {
       final response = await _apiClient.dio.get('${ApiConstants.bookings}/account/$accountId');
-      return (response.data as List).map((json) => Booking.fromJson(json)).toList();
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Booking.fromJson(json)).toList();
+      }
+      return [];
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
       throw _handleError(e);
     }
   }
@@ -67,9 +85,17 @@ class BookingService {
   }
 
   Exception _handleError(DioException e) {
+    String message = 'Server error';
     if (e.response != null) {
-      return Exception(e.response?.data['message'] ?? 'Server error');
+      final data = e.response?.data;
+      if (data is Map) {
+        message = data['message'] ?? data['error'] ?? 'Server error';
+      } else if (data is String && data.isNotEmpty) {
+        message = data;
+      }
+    } else {
+      message = 'Network error: ${e.message}';
     }
-    return Exception('Network error');
+    return Exception(message);
   }
 }

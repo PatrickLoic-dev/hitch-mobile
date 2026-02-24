@@ -40,13 +40,27 @@ class RideService {
 
   Future<List<Ride>> getMyRides() async {
     try {
-      final response = await _apiClient.dio.get('${ApiConstants.rides}/me');
+      final response = await _apiClient.dio.get('${ApiConstants.rides}/my-rides');
       final data = response.data;
+      
+      print('getMyRides status: ${response.statusCode}');
+      print('getMyRides data: $data');
+
       if (data is List) {
         return data.map((json) => Ride.fromJson(json)).toList();
+      } else if (data is Map) {
+        if (data['rides'] is List) {
+          return (data['rides'] as List).map((json) => Ride.fromJson(json)).toList();
+        }
+        print('getMyRides: Info/Error received: ${data['message'] ?? data['info'] ?? data['error']}');
+        return [];
       }
       return [];
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
+        print('getMyRides failure: ${e.response?.statusCode}');
+        return [];
+      }
       throw _handleError(e);
     }
   }
@@ -54,19 +68,23 @@ class RideService {
   Future<List<Ride>> searchRides({
     required String startingLocation,
     required String destination,
-    required int seats,
     required DateTime departureTime,
   }) async {
+    final queryParams = {
+      'starting_location': startingLocation,
+      'destination': destination,
+      'departure_time': DateFormat('yyyy-MM-dd').format(departureTime),
+    };
+    
     try {
+      print('Searching rides with params: $queryParams');
       final response = await _apiClient.dio.get(
         '${ApiConstants.rides}/search',
-        queryParameters: {
-          'starting_location': startingLocation,
-          'destination': destination,
-          'seats': seats,
-          'departure_time': DateFormat('yyyy-MM-dd').format(departureTime),
-        },
+        queryParameters: queryParams,
       );
+      
+      print('Search rides status: ${response.statusCode}');
+      print('Search rides data: ${response.data}');
       
       final data = response.data;
       if (data is List) {
@@ -76,6 +94,12 @@ class RideService {
       }
       return [];
     } on DioException catch (e) {
+      print('Dio error in searchRides: ${e.message}');
+      if (e.response != null) {
+        print('Response status: ${e.response?.statusCode}');
+        print('Response data: ${e.response?.data}');
+      }
+      if (e.response?.statusCode == 404) return [];
       throw _handleError(e);
     }
   }
@@ -107,6 +131,7 @@ class RideService {
       }
       return [];
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
       throw _handleError(e);
     }
   }

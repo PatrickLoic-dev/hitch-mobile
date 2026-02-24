@@ -5,6 +5,7 @@ import 'package:Hitch/providers/trip_request_provider.dart';
 import 'package:Hitch/screens/rider-screens/home/trips-request/search_location_page.dart';
 import 'package:Hitch/screens/driver-screens/offer-ride/pickup_location_page.dart';
 import 'package:Hitch/screens/driver-screens/offer-ride/set_price_page.dart';
+import 'package:Hitch/screens/rider-screens/home/trips-request/find_ride_loading_page.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -92,7 +93,10 @@ class HomePage extends StatelessWidget {
                                       MaterialPageRoute(builder: (context) => const SetPricePage()),
                                     );
                                   } else {
-                                    // Logic for Passenger search
+                                    // Navigate to Loading Page for Passengers
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (context) => const FindRideLoadingPage()),
+                                    );
                                   }
                                 }
                               : null,

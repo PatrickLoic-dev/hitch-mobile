@@ -30,14 +30,29 @@ class TripProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      // Fetch both bookings and published rides in parallel
-      final results = await Future.wait([
+      final List<dynamic> results = await Future.wait([
         _bookingService.getUserBookings(),
         _rideService.getMyRides(),
       ]);
       
-      _bookings = results[0] as List<Booking>;
-      _publishedRides = results[1] as List<Ride>;
+      // Safely extracting results without explicit risky casts
+      final dynamic bookingsResult = results[0];
+      final dynamic ridesResult = results[1];
+
+      if (bookingsResult is List<Booking>) {
+        _bookings = bookingsResult;
+      } else {
+        print('fetchTrips: bookingsResult was not a List<Booking>');
+        _bookings = [];
+      }
+
+      if (ridesResult is List<Ride>) {
+        _publishedRides = ridesResult;
+      } else {
+        print('fetchTrips: ridesResult was not a List<Ride>');
+        _publishedRides = [];
+      }
+
     } catch (e) {
       print('Error fetching trips: $e');
     } finally {
