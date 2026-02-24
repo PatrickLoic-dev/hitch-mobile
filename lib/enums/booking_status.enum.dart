@@ -1,0 +1,7 @@
+enum BookingStatus {
+  AWAITING_CONFIRMATION,
+  CONFIRMED,
+  ON_TRIP,
+  COMPLETED,
+  CANCELLED
+}

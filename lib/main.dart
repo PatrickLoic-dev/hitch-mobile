@@ -1,11 +1,11 @@
-// lib/main.dart
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:Hitch/components/button.dart';
 import 'package:Hitch/enums/authflow.enum.dart';
-import 'package:Hitch/navigation/driver_main_shell.dart';
 import 'package:Hitch/navigation/main_shell.dart';
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/providers/trip_provider.dart';
+import 'package:Hitch/providers/trip_request_provider.dart';
 import 'package:Hitch/providers/user_provider.dart';
 import 'package:Hitch/screens/registration/enter_number_page.dart';
 import 'package:provider/provider.dart';
@@ -20,13 +20,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap the app with MultiProvider to handle multiple states.
-    // UserProvider will manage the user's role and login status.
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => UserProvider()),
-        // You can add other providers here if needed, e.g., TripRequestProvider
-        // ChangeNotifierProvider(create: (context) => TripRequestProvider()),
+        ChangeNotifierProvider(create: (context) => TripRequestProvider()),
+        ChangeNotifierProvider(create: (context) => TripProvider()),
       ],
       child: MaterialApp(
         title: 'Hitch',
@@ -47,24 +46,18 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Consumer widget listens to changes in UserProvider.
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
-        // If user is not logged in, show the welcome page.
-        if (!userProvider.isLoggedIn) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (!authProvider.isLoggedIn) {
           return const WelcomePage();
         } else {
-          // If user is logged in, show the correct shell based on their role.
-          return userProvider.isDriver
-              ? const DriverMainShell()
-              : const MainShell();
+          return const MainShell();
         }
       },
     );
   }
 }
 
-// Renamed from MyHomePage to WelcomePage for clarity.
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
 
@@ -142,10 +135,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   const SizedBox(height: 16),
                   Button(
                     onPressed: () {
-                      // Example of logging in as a rider.
-                      // In a real app, this would happen after a successful API call.
-                      Provider.of<UserProvider>(context, listen: false)
-                          .login(isDriver: false);
+                      // Provider.of<UserProvider>(context, listen: false).login();
                     },
                     text: 'Sign in with Google',
                     textStyle: const TextStyle(

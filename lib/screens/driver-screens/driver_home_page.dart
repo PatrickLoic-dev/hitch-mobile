@@ -1,20 +1,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:Hitch/components/button.dart';
+import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/providers/trip_request_provider.dart'; // Import du Provider
 import 'package:Hitch/screens/rider-screens/home/trips-request/search_location_page.dart';
 import 'package:intl/intl.dart'; // Import pour le formatage de date/heure
 import 'package:provider/provider.dart';
 
 class DriverHomePage extends StatelessWidget {
-  final String userName;
-
-  const DriverHomePage({super.key, this.userName = 'Naomi'});
+  const DriverHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Le Consumer nous donne accès au provider et reconstruit l'interface
-    // quand les données changent.
+    final authProvider = Provider.of<AuthProvider>(context);
+    final userName = authProvider.user?.firstName ?? 'User';
+
     return Consumer<TripRequestProvider>(
       builder: (context, tripProvider, child) {
         return Scaffold(

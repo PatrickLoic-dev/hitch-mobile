@@ -2,11 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
-import 'package:Hitch/screens/registration/driver_verification/custom_camera_page.dart'; // Reused for consistency
 import 'package:image_picker/image_picker.dart';
-import 'package:Hitch/providers/user_provider.dart';
 
 class SelfieWithLicencePage extends StatefulWidget {
   const SelfieWithLicencePage({super.key});
@@ -132,10 +129,8 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
     print('Submitting verification with:');
     print('Selfie image file: ${_selfieImageFile?.path}');
 
-    // This context is crucial for navigating after modals are handled.
     final homeContext = context;
 
-    // 1. Show the "Verifying your identity" modal.
     showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -146,39 +141,26 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
       ),
       builder: (dialogContext) => _VerificationInProgressModal(
         onReturnHome: () {
-          // This button allows the user to leave the verification flow.
           Navigator.of(dialogContext).pop();
           Navigator.of(homeContext).popUntil((route) => route.isFirst);
         },
       ),
     );
 
-    // 2. Start a timer to simulate the backend verification process.
     Timer(const Duration(seconds: 4), () {
-      // 3. When the timer finishes, close the "in progress" modal if it's still open.
       if (Navigator.of(homeContext).canPop()) {
-        // Use root navigator to be safe, but homeContext should work
         Navigator.of(homeContext, rootNavigator: true).pop();
       }
 
-      // 4. THIS IS THE FIX: Log the user in and set their role to driver.
-      // The AuthWrapper in main.dart will now correctly direct to the DriverMainShell.
-      Provider.of<UserProvider>(homeContext, listen: false).loginAsDriver();
-
-      // 5. Show the "You've earned a badge" success modal.
       showModalBottomSheet(
         context: homeContext,
         builder: (_) => const _VerificationSuccessModal(),
       );
 
-      // 6. Start a new, short timer to display the success modal.
-      // After this timer, it will automatically navigate to the new Driver Home Page.
       Timer(const Duration(seconds: 3), () {
-        // Close the success modal.
         if (Navigator.of(homeContext).canPop()) {
           Navigator.of(homeContext, rootNavigator: true).pop();
         }
-        // Navigate to the root. AuthWrapper will now show DriverMainShell.
         Navigator.of(homeContext).popUntil((route) => route.isFirst);
       });
     });
@@ -259,7 +241,6 @@ class _SelfieWithLicencePageState extends State<SelfieWithLicencePage> {
   }
 }
 
-// First Modal: Verification In Progress
 class _VerificationInProgressModal extends StatelessWidget {
   final VoidCallback onReturnHome;
 
@@ -314,7 +295,6 @@ class _VerificationInProgressModal extends StatelessWidget {
   }
 }
 
-// Second Modal: Verification Success
 class _VerificationSuccessModal extends StatelessWidget {
   const _VerificationSuccessModal();
 
@@ -355,7 +335,6 @@ class _VerificationSuccessModal extends StatelessWidget {
     );
   }
 }
-
 
 class _RequirementItem extends StatelessWidget {
   final String text;
@@ -406,10 +385,11 @@ class _UploadBox extends StatelessWidget {
     return Stack(
       children: [
         GestureDetector(
-          onTap: imageFile == null ? onTap : null,
+          onTap: imageFile == null
+              ? onTap
+              : null,
           child: Container(
             height: 170,
-            width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(12.0),
@@ -419,31 +399,31 @@ class _UploadBox extends StatelessWidget {
               borderRadius: BorderRadius.circular(10.5),
               child: imageFile != null
                   ? Image.file(
-                imageFile!,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              )
+                      imageFile!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
                   : Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(iconPath, width: 40, height: 40),
-                    const SizedBox(height: 12),
-                    Text(
-                      text,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Jokker',
-                        color: Color(0xFFA6EB2E),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(iconPath, width: 40, height: 40),
+                          const SizedBox(height: 12),
+                          Text(
+                            text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontFamily: 'Jokker',
+                              color: Color(0xFFA6EB2E),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),

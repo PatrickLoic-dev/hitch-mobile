@@ -1,25 +1,28 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
+import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/screens/registration/select_role_page.dart';
 
 
 class ReviewProfilePicturePage extends StatelessWidget {
-  final File imageFile; // Accepte le fichier image de la page précédente
+  final File imageFile;
 
   const ReviewProfilePicturePage({super.key, required this.imageFile});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch, // Étire les boutons
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Bouton de retour (aligné à gauche)
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
@@ -29,7 +32,6 @@ class ReviewProfilePicturePage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // 2. Titre
               const Text(
                 'Review your picture',
                 style: TextStyle(
@@ -40,7 +42,6 @@ class ReviewProfilePicturePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // 3. Description
               const Text(
                 'Please check and make sure that your face is clearly visible.',
                 style: TextStyle(
@@ -52,26 +53,22 @@ class ReviewProfilePicturePage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // 4. Affichage de l'image
               Center(
                 child: ClipOval(
                   child: Image.file(
                     imageFile,
                     width: 240,
                     height: 240,
-                    fit: BoxFit.cover, // Assure que l'image remplit le cercle
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
 
-              const Spacer(), // Pousse les boutons vers le bas
+              const Spacer(),
 
-              // 5. Boutons d'action
               Button(
                 onPressed: () {
-                  // TODO: Logique pour sauvegarder l'image et terminer l'inscription
-                  print('Photo de profil confirmée !');
-
+                  authProvider.setRegistrationProfilePicture(imageFile.path);
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const SelectRolePage(),
@@ -83,7 +80,6 @@ class ReviewProfilePicturePage extends StatelessWidget {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () {
-                  // Retourne à la page précédente pour choisir une autre photo
                   Navigator.of(context).pop();
                 },
                 style: TextButton.styleFrom(

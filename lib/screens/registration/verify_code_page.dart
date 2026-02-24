@@ -2,11 +2,12 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
 import 'package:Hitch/enums/authflow.enum.dart';
 import 'package:Hitch/navigation/main_shell.dart';
+import 'package:Hitch/providers/auth_provider.dart';
 import 'package:Hitch/screens/registration/enter_name_page.dart';
-
 
 class VerifyCodePage extends StatefulWidget {
   final String phoneNumber;
@@ -25,6 +26,7 @@ class VerifyCodePage extends StatefulWidget {
 class _VerifyCodePageState extends State<VerifyCodePage> {
   late Timer _timer;
   int _start = 300; // 5 minutes in seconds
+  String? _otpCode;
 
   @override
   void initState() {
@@ -34,7 +36,6 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
 
   void startTimer() {
     _start = 300; // Reset timer
-    print("Flow Type ${widget.authFlowType}");
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_start == 0) {
         setState(() {
@@ -50,7 +51,7 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
 
   @override
   void dispose() {
-    _timer.cancel(); // Cancel the timer to avoid memory leaks
+    _timer.cancel();
     super.dispose();
   }
 
@@ -62,6 +63,8 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -70,7 +73,6 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Back button
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
@@ -79,7 +81,6 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
               ),
               const SizedBox(height: 20),
 
-              // 2. Title Text
               const Text(
                 'We sent you an SMS',
                 style: TextStyle(
@@ -90,7 +91,6 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
               ),
               const SizedBox(height: 12),
 
-              // 3. Description Text
               Text(
                 'Please enter the code we just sent to ${widget.phoneNumber}',
                 style: const TextStyle(
@@ -102,61 +102,55 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
               ),
               const SizedBox(height: 40),
 
-              // 4. OTP Input Fields
               OtpTextField(
                 numberOfFields: 6,
-                // Styling for each box
-                fieldWidth: 48, // Set width to 48
-                fieldHeight: 48, // Set height to 48
-                filled: true, // Required to set a fill color
-                fillColor: const Color(0xFFF5F5F5), // Set background color to #f5f5f5
+                fieldWidth: 48,
+                fieldHeight: 48,
+                filled: true,
+                fillColor: const Color(0xFFF5F5F5),
                 textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
 
-                // Border styles
-                borderColor: Colors.transparent, // Hide default border
+                borderColor: Colors.transparent,
                 enabledBorderColor: Colors.transparent,
-                focusedBorderColor: Colors.deepPurple, // Border color when focused
+                focusedBorderColor: Colors.deepPurple,
 
                 showFieldAsBox: true,
                 onSubmit: (String verificationCode) {
-                  print("Verification Code is: $verificationCode");
-                  // You can add auto-verification logic here
+                  setState(() {
+                    _otpCode = verificationCode;
+                  });
                 },
               ),
               const SizedBox(height: 30),
 
-              // 5. Resend Code Link with Timer
               Center(
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     children: <TextSpan>[
                       if (_start > 0) ...[
-                        // MODIFICATION: Link styling for the countdown
                         TextSpan(
                           text: 'Resend code in $timerString',
                           style: const TextStyle(
                             fontFamily: 'Jokker',
                             fontSize: 14,
-                            color: Colors.orange, // Text color is orange
-                            decoration: TextDecoration.underline, // Underline the whole text
+                            color: Colors.orange,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ] else ...[
-                        // MODIFICATION: Link styling for "Resend Code"
                         TextSpan(
                           text: 'Resend Code',
                           style: const TextStyle(
                             fontFamily: 'Jokker',
                             fontSize: 14,
-                            color: Colors.orange, // Text color is orange
-                            decoration: TextDecoration.underline, // Underline the whole text
+                            color: Colors.orange,
+                            decoration: TextDecoration.underline,
                           ),
                           recognizer: TapGestureRecognizer()
                             ..onTap = () {
-                              print('Resend code tapped');
-                              startTimer(); // Restart the timer
-                              // TODO: Add logic to actually resend the code
+                              // TODO: Resend OTP logic
+                              startTimer();
                             },
                         ),
                       ]
@@ -165,28 +159,30 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
                 ),
               ),
 
-              const Spacer(), // Pushes the button to the bottom
+              const Spacer(),
 
-              // 6. Button at the bottom
               SizedBox(
                 width: double.infinity,
                 child: Button(
-                  onPressed: () {
-                    print('Verify Code button pressed');
-                    // TODO: Add verification logic
-                    if (widget.authFlowType == AuthFlowType.register) {
-                      // Si c'est un NOUVEL utilisateur, on continue le flux normal
-                      print("Flux REGISTER: Navigation vers EnterNamePage.");
-                      Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const EnterNamePage(),
-                      ));
-                    } else {
-                      // Si c'est un utilisateur EXISTANT (Login), on va directement à la HomePage
-                      print("Flux LOGIN: Navigation vers HomePage.");
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const MainShell()),
-                            (Route<dynamic> route) => false, // Cette condition supprime toutes les routes précédentes.
-                      );
+                  onPressed: () async {
+                    if (_otpCode != null) {
+                      if (widget.authFlowType == AuthFlowType.register) {
+                        authProvider.setRegistrationOtp(_otpCode!);
+                        Navigator.of(context).pushReplacement(MaterialPageRoute(
+                          builder: (context) => const EnterNamePage(),
+                        ));
+                      } else {
+                        await authProvider.login(
+                          int.parse(widget.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '')),
+                          _otpCode!,
+                        );
+                        if (authProvider.isLoggedIn) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const MainShell()),
+                            (Route<dynamic> route) => false,
+                          );
+                        }
+                      }
                     }
                   },
                   text: 'Verify Code',

@@ -8,11 +8,44 @@ This repository contains the **Flutter frontend** of the platform, providing a m
 
 ## 🧩 Features
 - 🔍 **Search for rides** by location, date, and available seats
-- 🚗 **Offer a ride** as a driver with detailed trip and vehicle information
 - 💬 **In-app messaging & notifications** for coordination between passengers and drivers
 - 💳 **Integrated payments** for fair cost-sharing
 - 👤 **User profiles** with trip history, reviews, and driver ratings
 - 📱 **Real-time synchronization** with the Spring Boot backend (REST API)
+
+---
+
+## 📦 Data Models
+The application is built around a set of core data models that represent key entities in the carpooling system.
+
+| Model | Description |
+|---|---|
+| **`Account`** | Represents a user profile, containing personal information and verification status. |
+| **`Booking`** | Stores details of a reserved seat on a specific ride, including status and cost. |
+| **`Document`** | Manages user-uploaded documents (e.g., driver's license) for verification. |
+| **`Message`** | Represents a single chat message exchanged between users. |
+| **`Rating`** | Contains a user's rating and feedback for a completed ride. |
+| **`Ride`** | Defines a carpool trip offered by a driver, including route, timing, and pricing. |
+| **`Transaction`** | Records financial transactions, such as payments for bookings or wallet deposits. |
+| **`Vehicle`** | Stores information about a driver's vehicle. |
+| **`Wallet`** | Represents a user's virtual wallet for managing funds. |
+| **`OTP`** | Manages one-time passwords for phone number verification. |
+
+---
+
+## 🛠 Core Enums
+The application uses several enums to manage state, roles, and types consistently.
+
+| Enum | Description | Values |
+|---|---|---|
+| **`AuthFlowType`** | Defines the current step in the authentication process. | `login`, `register` |
+| **`BookingStatus`** | Tracks the state of a passenger's booking. | `AWAITING_CONFIRMATION`, `CONFIRMED`, `ON_TRIP`, `COMPLETED`, `CANCELLED` |
+| **`DocumentStatus`** | Represents the verification status of a user-submitted document. | `NEW`, `PENDING`, `APPROVED`, `REJECTED` |
+| **`Gender`** | Represents the user's gender for their profile. | `female`, `male` |
+| **`RoleType`** | Defines the user's role within the application. | `ADMIN`, `DRIVER`, `PASSENGER` |
+| **`TransactionType`** | Specifies the type of a financial transaction. | `TRANSFER`, `DEPOSIT` |
+| **`TripStatus`** | Manages the overall status of a ride from start to finish. | `SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED` |
+| **`VehicleComfort`** | Describes the comfort level of a vehicle. | `BASIC`, `COMFORT`, `PREMIUM` |
 
 ---
 
@@ -57,11 +90,12 @@ flutter run
 ## 🧠 Project Structure
 ```
 lib/
+ ├── components/       # Reusable UI components
+ ├── enums/            # Global enumerations
  ├── models/           # Data models (User, Vehicle, Trip, Booking, etc.)
  ├── services/         # API and data services
  ├── providers/        # State management logic
  ├── screens/          # UI screens (login, home, trip detail, etc.)
- ├── widgets/          # Reusable UI components
  └── utils/            # Helpers, formatters, constants
 ```
 

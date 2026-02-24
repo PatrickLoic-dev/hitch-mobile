@@ -1,5 +1,12 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:Hitch/enums/trip_detail_status.enum.dart';
+import 'package:Hitch/providers/trip_provider.dart';
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/models/booking.dart';
+import 'package:Hitch/screens/registration/driver_verification/proof_of_identity_page.dart';
 
 //Personnal components
 import 'package:Hitch/components/past_ride_card.dart';
@@ -16,15 +23,17 @@ class TripsPage extends StatefulWidget {
   State<TripsPage> createState() => _TripsPageState();
 }
 
-// On utilise un 'TickerProviderStateMixin' pour animer le changement d'onglet
 class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    // Initialise le contrôleur avec 3 onglets
     _tabController = TabController(length: 3, vsync: this);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<TripProvider>(context, listen: false).fetchTrips();
+    });
   }
 
   @override
@@ -35,13 +44,15 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isPassenger = authProvider.user?.role == 'PASSENGER';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Titre de la page ---
             const Padding(
               padding: EdgeInsets.only(left: 24, top: 20, bottom: 16),
               child: Text(
@@ -54,12 +65,11 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
               ),
             ),
 
-            // --- Barre d'onglets principale ---
             TabBar(
               controller: _tabController,
-              labelColor: Colors.black,
+              labelColor: const Color(0xFFF2640E),
               unselectedLabelColor: Colors.grey.shade500,
-              indicatorColor: Colors.black,
+              indicatorColor: const Color(0xFFF2640E),
               indicatorWeight: 3.0,
               labelStyle: const TextStyle(
                 fontFamily: 'Jokker',
@@ -78,80 +88,91 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
               ],
             ),
 
-            // --- Contenu des onglets ---
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: <Widget>[
-                  // Contenu pour l'onglet "Booked"
-                  TabContentWithSubTabs(
-                    // On passe la liste des trajets à venir
-                    upcomingContent: ListView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 20.0),
-                      children: [
-                        UpcomingRideCard(
-                          pickUpLocation: "Yassa, Douala",
-                          dropOffLocation: "Bonabéri, Douala",
-                          dateTime: "28 Nov, 08:00 PM",
-                          price: "XAF 2,500.00",
-                          driverName: "Loïc Patrick",
-                          driverAvatar: 'assets/images/default-avatar.jpg',
-                          vehicleModel: 'Toyota Yaris',
-                          vehiclePlate: 'LT 123 AE',
-                          status: UpcomingRideStatus.confirmed,
-                          onTap: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const TripDetailPage(status: TripDetailStatus.confirmed),
-                            ));
-                          },
+              child: Consumer<TripProvider>(
+                builder: (context, tripProvider, child) {
+                  if (tripProvider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  return TabBarView(
+                    controller: _tabController,
+                    children: <Widget>[
+                      RefreshIndicator(
+                        onRefresh: () => tripProvider.fetchTrips(),
+                        child: TabContentWithSubTabs(
+                          upcomingTrips: tripProvider.upcomingTrips,
+                          pastTrips: tripProvider.pastTrips,
                         ),
-                        const SizedBox(height: 16),
-                        UpcomingRideCard(
-                          pickUpLocation: "Village, Douala",
-                          dropOffLocation: "Ndogbong, Douala",
-                          dateTime: "29 Nov, 10:00 AM",
-                          price: "XAF 1,000.00",
-                          driverName: "Stéphane K.",
-                          driverAvatar: 'assets/images/default-avatar.jpg',
-                          vehicleModel: 'Toyota RAV4',
-                          vehiclePlate: 'LT 456 BS',
-                          status: UpcomingRideStatus.awaiting,
-                          onTap: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const TripDetailPage(status: TripDetailStatus.awaitingConfirmation),
-                            ));
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Contenu pour l'onglet "Published"
-                  const TabContentWithSubTabs(
-                    upcomingContent: EmptyStateWidget(
-                      title: 'You haven’t offered any rides yet',
-                      description: 'Offer a ride and they will appear here',
-                      showSwitchToDriverLink: true,
-                    ),
-                  ),
-                  // Contenu pour l'onglet "Active"
-                  ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-                    children: [
-                      ActiveRideCard(
-                        pickUpLocation: "Rond-point Deido, Douala",
-                        dropOffLocation: "Japoma, Douala",
-                        dateTime: "26 Nov, 03:45 PM",
-                        price: "XAF 3,000.00",
-                        driverName: "Aline F.",
-                        driverAvatar: 'assets/images/default-avatar.jpg',
-                        onTap: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const TripDetailPage(status: TripDetailStatus.onTrip),
-                          ));
-                        },
+                      ),
+                      // "Published" Tab
+                      isPassenger 
+                        ? _buildPassengerPublishedState(context)
+                        : RefreshIndicator(
+                            onRefresh: _dummyOnRefresh,
+                            child: const TabContentWithSubTabs(
+                              upcomingTrips: [],
+                              pastTrips: [],
+                            ),
+                          ),
+                      RefreshIndicator(
+                        onRefresh: () => tripProvider.fetchTrips(),
+                        child: _buildActiveTripsList(tripProvider.trips.where((t) => t.status.name == 'ON_TRIP').toList()),
                       ),
                     ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _dummyOnRefresh() async {}
+
+  Widget _buildPassengerPublishedState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'You haven’t offered any rides yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Jokker',
+              ),
+            ),
+            const SizedBox(height: 12),
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade600,
+                  fontFamily: 'Jokker',
+                ),
+                children: [
+                  const TextSpan(text: 'To offer a ride you need to undergo '),
+                  TextSpan(
+                    text: 'driver verification',
+                    style: const TextStyle(
+                      color: Color(0xFFF2640E),
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ProofOfIdentityPage(),
+                          ),
+                        );
+                      },
                   ),
                 ],
               ),
@@ -161,15 +182,49 @@ class _TripsPageState extends State<TripsPage> with TickerProviderStateMixin {
       ),
     );
   }
+
+  Widget _buildActiveTripsList(List<Booking> activeTrips) {
+     if (activeTrips.isEmpty) {
+      return const EmptyStateWidget(
+        title: 'No active rides',
+        description: 'Your current rides will appear here',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      itemCount: activeTrips.length,
+      itemBuilder: (context, index) {
+        final trip = activeTrips[index];
+        final ride = trip.rideDetails;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: ActiveRideCard(
+            pickUpLocation: ride?.startingLocation ?? "Unknown",
+            dropOffLocation: ride?.destination ?? "Unknown",
+            dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
+            price: "XAF ${trip.totalAmount}",
+            driverName: "Driver", 
+            driverAvatar: 'assets/images/default-avatar.jpg',
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const TripDetailPage(status: TripDetailStatus.onTrip),
+              ));
+            },
+          ),
+        );
+      },
+    );
+  }
 }
 
-// WIDGET POUR LES CONTENUS "BOOKED" ET "PUBLISHED" (AVEC SOUS-ONGLETS)
 class TabContentWithSubTabs extends StatefulWidget {
-  final Widget upcomingContent;
+  final List<Booking> upcomingTrips;
+  final List<Booking> pastTrips;
 
   const TabContentWithSubTabs({
     super.key,
-    required this.upcomingContent,
+    required this.upcomingTrips,
+    required this.pastTrips,
   });
 
   @override
@@ -177,7 +232,6 @@ class TabContentWithSubTabs extends StatefulWidget {
 }
 
 class _TabContentWithSubTabsState extends State<TabContentWithSubTabs> {
-  // 0 pour "Upcoming", 1 pour "Past"
   int _selectedSubTabIndex = 0;
 
   @override
@@ -205,46 +259,82 @@ class _TabContentWithSubTabsState extends State<TabContentWithSubTabs> {
         ),
         Expanded(
           child: _selectedSubTabIndex == 0
-              ? widget.upcomingContent
-          // Contenu statique pour l'onglet "Past"
-              : ListView(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 24.0, vertical: 20.0),
-            children: [
-              PastRideCard(
-                pickUpLocation: "Akwa, Douala",
-                dropOffLocation: "Bonapriso, Douala",
-                dateTime: "18 Aug, 06:00 AM",
-                price: "XAF 1,500.00",
-                status: RideStatus.completed,
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => const TripDetailPage(status: TripDetailStatus.completed),
-                  ));
-                },
-              ),
-              const SizedBox(height: 16),
-              PastRideCard(
-                pickUpLocation: "Logpom, Douala",
-                dropOffLocation: "Deido, Douala",
-                dateTime: "15 Aug, 09:30 PM",
-                price: "XAF 2,000.00",
-                status: RideStatus.cancelled,
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => const TripDetailPage(status: TripDetailStatus.cancelled),
-                  ));
-                },
-              ),
-            ],
-          ),
+              ? _buildUpcomingList()
+              : _buildPastList(),
         ),
       ],
     );
   }
+
+  Widget _buildUpcomingList() {
+    if (widget.upcomingTrips.isEmpty) {
+      return const EmptyStateWidget(
+        title: 'No upcoming rides',
+        description: 'Book a ride and they will appear here',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      itemCount: widget.upcomingTrips.length,
+      itemBuilder: (context, index) {
+        final trip = widget.upcomingTrips[index];
+        final ride = trip.rideDetails;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: UpcomingRideCard(
+            pickUpLocation: ride?.startingLocation ?? "Unknown",
+            dropOffLocation: ride?.destination ?? "Unknown",
+            dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
+            price: "XAF ${trip.totalAmount}",
+            driverName: "Driver",
+            driverAvatar: 'assets/images/default-avatar.jpg',
+            vehicleModel: 'Unknown',
+            vehiclePlate: 'Unknown',
+            status: trip.status.name == 'CONFIRMED' ? UpcomingRideStatus.confirmed : UpcomingRideStatus.awaiting,
+            onTap: () {
+               Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => TripDetailPage(status: trip.status.name == 'CONFIRMED' ? TripDetailStatus.confirmed : TripDetailStatus.awaitingConfirmation),
+              ));
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPastList() {
+    if (widget.pastTrips.isEmpty) {
+      return const EmptyStateWidget(
+        title: 'No past rides',
+        description: 'Your completed rides will appear here',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      itemCount: widget.pastTrips.length,
+      itemBuilder: (context, index) {
+        final trip = widget.pastTrips[index];
+        final ride = trip.rideDetails;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: PastRideCard(
+            pickUpLocation: ride?.startingLocation ?? "Unknown",
+            dropOffLocation: ride?.destination ?? "Unknown",
+            dateTime: ride != null ? DateFormat('d MMM, hh:mm a').format(ride.departureTime) : "Unknown",
+            price: "XAF ${trip.totalAmount}",
+            status: trip.status.name == 'COMPLETED' ? RideStatus.completed : RideStatus.cancelled,
+            onTap: () {
+               Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => TripDetailPage(status: trip.status.name == 'COMPLETED' ? TripDetailStatus.completed : TripDetailStatus.cancelled),
+              ));
+            },
+          ),
+        );
+      },
+    );
+  }
 }
 
-// WIDGET POUR AFFICHER LES MESSAGES QUAND C'EST VIDE
 class EmptyStateWidget extends StatelessWidget {
   final String title;
   final String description;
@@ -288,13 +378,12 @@ class EmptyStateWidget extends StatelessWidget {
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  // TODO: Logique pour changer de profil
                   print('Changer de profil cliqué');
                 },
                 child: const Text(
                   'Switch to driver profile',
                   style: TextStyle(
-                    color: Colors.blue, // Couleur typique pour un lien
+                    color: Colors.blue,
                     decoration: TextDecoration.underline,
                     fontFamily: 'Jokker',
                   ),
@@ -308,7 +397,6 @@ class EmptyStateWidget extends StatelessWidget {
   }
 }
 
-// WIDGET BOUTON POUR LES SOUS-ONGLETS "UPCOMING" / "PAST"
 class SubTabButton extends StatelessWidget {
   final String text;
   final bool isSelected;
@@ -331,7 +419,7 @@ class SubTabButton extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30), // Bord bien arrondi
+          borderRadius: BorderRadius.circular(30),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       ),

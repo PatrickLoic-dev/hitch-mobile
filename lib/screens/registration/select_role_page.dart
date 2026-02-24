@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:Hitch/components/button.dart';
-// Imports nécessaires pour les modaux
 import 'package:Hitch/components/permission_modal.dart';
 import 'package:Hitch/components/profile_completed_modal.dart';
-// NOUVEL IMPORT : Chemin vers la page de vérification du permis
-import 'package:Hitch/screens/registration/driver_verification/proof_of_identity_page.dart';
-
-//Chemin de la page d'acceuil
 import 'package:Hitch/navigation/main_shell.dart';
-
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/screens/registration/driver_verification/proof_of_identity_page.dart';
 
 class SelectRolePage extends StatefulWidget {
   const SelectRolePage({super.key});
@@ -19,27 +17,23 @@ class SelectRolePage extends StatefulWidget {
 
 class _SelectRolePageState extends State<SelectRolePage> {
 
-  // --- Début de la logique des modaux (conservée pour le passager) ---
-
-  // Fonction pour afficher le modal "Profile Completed"
   void _showProfileCompletedModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      isDismissible: false, // Empêche de fermer le modal en cliquant à l'extérieur
+      isDismissible: false, 
       backgroundColor: Colors.transparent,
       builder: (ctx) => ProfileCompletedModal(
         onStartAdventure: () {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const MainShell()),
-                (Route<dynamic> route) => false, // Cette condition supprime toutes les routes précédentes.
+                (Route<dynamic> route) => false, 
           );
         },
       ),
     );
   }
 
-  // Fonction pour afficher le modal "Notifications"
   void _showNotificationsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -48,14 +42,15 @@ class _SelectRolePageState extends State<SelectRolePage> {
       builder: (ctx) => PermissionModal(
         pngAsset: 'assets/images/notifications.png',
         title: 'Turn on Notifications',
-        description: 'Get updates on driver’s or rider’s location and more through push notifications.',
-        onAllow: () {
-          print("Permission Notifications: Allowed");
-          Navigator.of(ctx).pop();
-          _showProfileCompletedModal(context);
+        description: 'Get updates on your ride status and more through push notifications.',
+        onAllow: () async {
+          await Permission.notification.request();
+          if (context.mounted) {
+            Navigator.of(ctx).pop();
+            _showProfileCompletedModal(context);
+          }
         },
         onMaybeLater: () {
-          print("Permission Notifications: Maybe Later");
           Navigator.of(ctx).pop();
           _showProfileCompletedModal(context);
         },
@@ -63,7 +58,6 @@ class _SelectRolePageState extends State<SelectRolePage> {
     );
   }
 
-  // Fonction pour afficher le modal "Contacts"
   void _showContactsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -72,14 +66,15 @@ class _SelectRolePageState extends State<SelectRolePage> {
       builder: (ctx) => PermissionModal(
         pngAsset: 'assets/images/contacts.png',
         title: 'Allow access to contacts',
-        description: 'See rides and drivers from people you may already know.',
-        onAllow: () {
-          print("Permission Contacts: Allowed");
-          Navigator.of(ctx).pop();
-          _showNotificationsModal(context);
+        description: 'See rides from people you may already know.',
+        onAllow: () async {
+          await Permission.contacts.request();
+          if (context.mounted) {
+            Navigator.of(ctx).pop();
+            _showNotificationsModal(context);
+          }
         },
         onMaybeLater: () {
-          print("Permission Contacts: Maybe Later");
           Navigator.of(ctx).pop();
           _showNotificationsModal(context);
         },
@@ -87,10 +82,10 @@ class _SelectRolePageState extends State<SelectRolePage> {
     );
   }
 
-  // --- Fin de la logique des modaux ---
-
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -99,16 +94,14 @@ class _SelectRolePageState extends State<SelectRolePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Bouton de retour
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => Navigator.of(context).pop(),
               ),
               const SizedBox(height: 20),
 
-              // 2. Titre
               const Text(
-                'How will you use Hitch?',
+                'Ready to Hitch?',
                 style: TextStyle(
                   fontFamily: 'Jokker',
                   fontSize: 28,
@@ -117,9 +110,8 @@ class _SelectRolePageState extends State<SelectRolePage> {
               ),
               const SizedBox(height: 12),
 
-              // 3. Description
               const Text(
-                'Let us know how you intend to use Hitch, these helps us personalise your experience.',
+                'Let\'s get your profile set up so you can start sharing rides with your university community.',
                 style: TextStyle(
                   fontFamily: 'Jokker',
                   fontSize: 16,
@@ -128,7 +120,6 @@ class _SelectRolePageState extends State<SelectRolePage> {
                 ),
               ),
               const SizedBox(height: 40),
-
 
               Expanded(
                 child: Center(
@@ -139,37 +130,53 @@ class _SelectRolePageState extends State<SelectRolePage> {
                 ),
               ),
 
-              const Spacer(), // Pousse les boutons vers le bas
+              const Spacer(),
 
-              // 5. Boutons d'action
               SizedBox(
                 width: double.infinity,
-                child: Button(
-                  onPressed: () {
-                    print('Rôle sélectionné : Passenger');
-                    // Le flux pour le passager reste le même, il déclenche les modaux.
-                    _showContactsModal(context);
-                  },
-                  text: 'Passenger',
-                ),
+                child: authProvider.isLoading 
+                  ? const Center(child: CircularProgressIndicator())
+                  : Button(
+                      onPressed: () async {
+                        try {
+                          await authProvider.register('PASSENGER');
+                          if (mounted) _showContactsModal(context);
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                          }
+                        }
+                      },
+                      text: 'Continue as Passenger',
+                    ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: Button(
-                  onPressed: () {
-                    // MODIFICATION : Au lieu d'appeler _showContactsModal,
-                    // on navigue vers la page de vérification du permis.
-                    print('Rôle sélectionné : Driver. Lancement du flux de vérification.');
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ProofOfIdentityPage(),
-                      ),
-                    );
+                  onPressed: () async {
+                    try {
+                      await authProvider.register('DRIVER');
+                      if (mounted) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ProofOfIdentityPage(),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    }
                   },
-                  text: 'Driver',
-                  backgroundColor: const Color(0xFFE4F9C0),
-                  foregroundColor: Colors.black,
+                  text: 'Continue as Driver',
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],

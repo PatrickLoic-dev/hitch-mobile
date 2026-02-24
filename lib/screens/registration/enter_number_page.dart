@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:Hitch/components/button.dart'; // Make sure this path is correct
+import 'package:provider/provider.dart';
+import 'package:Hitch/components/button.dart';
 import 'package:Hitch/enums/authflow.enum.dart';
-import 'package:Hitch/screens/registration/verify_code_page.dart'; // Make sure this path is correct'
+import 'package:Hitch/providers/auth_provider.dart';
+import 'package:Hitch/screens/registration/verify_code_page.dart';
 
 class EnterNumberPage extends StatefulWidget {
   final AuthFlowType authFlowType;
@@ -17,12 +19,136 @@ class EnterNumberPage extends StatefulWidget {
 }
 
 class _EnterNumberPageState extends State<EnterNumberPage> {
-  // Controller to manage the text in the phone number input field
   final TextEditingController _phoneController = TextEditingController();
   String _selectedCountryCode = '+237';
 
+  void _showAccountExistsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline, size: 48, color: Colors.orange),
+              const SizedBox(height: 16),
+              const Text(
+                'Account Already Exists',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jokker',
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'An account with this phone number already exists. Please log in instead or use a different number.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontFamily: 'Jokker',
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  text: 'Got it',
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAccountNotFoundModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.person_add_outlined, size: 48, color: Colors.blue),
+              const SizedBox(height: 16),
+              const Text(
+                'Account Not Found',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jokker',
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'We couldn\'t find an account with this number. Would you like to create a new one?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontFamily: 'Jokker',
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Switch to registration flow
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const EnterNumberPage(authFlowType: AuthFlowType.register),
+                      ),
+                    );
+                  },
+                  text: 'Go to Registration',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -31,7 +157,6 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Back button at the top
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
@@ -40,10 +165,9 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
               ),
               const SizedBox(height: 20),
 
-              // 2. Title Text
-              const Text(
-                'Enter Your Contact Details',
-                style: TextStyle(
+              Text(
+                widget.authFlowType == AuthFlowType.register ? 'Enter Your Contact Details' : 'Welcome Back!',
+                style: const TextStyle(
                   fontFamily: 'Jokker',
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -51,10 +175,11 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
               ),
               const SizedBox(height: 12),
 
-              // 3. Description Text
-              const Text(
-                'Enter your phone number with a valid country code so others can reach you.',
-                style: TextStyle(
+              Text(
+                widget.authFlowType == AuthFlowType.register 
+                  ? 'Enter your phone number with a valid country code so others can reach you.'
+                  : 'Enter your phone number to log in to your account.',
+                style: const TextStyle(
                   fontFamily: 'Jokker',
                   fontSize: 16,
                   color: Colors.grey,
@@ -63,7 +188,6 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
               ),
               const SizedBox(height: 40),
 
-              // 4. Country Code Picker and Phone Number Input
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
@@ -76,34 +200,26 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
                         setState(() {
                           _selectedCountryCode = countryCode.dialCode!;
                         });
-                        print("New Country selected: " + countryCode.toString());
                       },
-                      // Initial selection
                       initialSelection: 'CM',
-                      // Whether to show the country name
                       showCountryOnly: false,
-                      // Whether to show the country's dialing code
                       showOnlyCountryWhenClosed: false,
-                      // How to align the flag and text
                       alignLeft: false,
-                      // Add favorite countries to the top of the list
                       favorite: const ['+237', 'CMR'],
                     ),
-                    // Vertical divider for visual separation
                     Container(
                       height: 30,
                       width: 1,
                       color: Colors.grey.shade300,
                       margin: const EdgeInsets.symmetric(horizontal: 8.0),
                     ),
-                    // Phone Number Input Field
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
                           hintText: 'Phone number',
-                          border: InputBorder.none, // Hide the default border
+                          border: InputBorder.none,
                         ),
                       ),
                     ),
@@ -111,34 +227,51 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
                 ),
               ),
 
-              // This Spacer pushes the button to the bottom
               const Spacer(),
 
-              // 5. Button at the bottom of the page
               SizedBox(
-                width: double.infinity, // Make the button stretch
-                child: Button(
-                  onPressed: () {
-                    String fullPhoneNumber = '$_selectedCountryCode ${_phoneController.text}';
-                    print('Verification code sent to: ${_phoneController.text}');
-                    // Add your logic to handle sending the code
-
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => VerifyCodePage(
-                          phoneNumber: fullPhoneNumber,
-                          authFlowType: widget.authFlowType,
+                width: double.infinity,
+                child: authProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Button(
+                        onPressed: () async {
+                          if (_phoneController.text.isNotEmpty) {
+                            try {
+                              final fullNumber = int.parse(_selectedCountryCode.replaceAll('+', '') + _phoneController.text);
+                              await authProvider.sendOtp(
+                                fullNumber,
+                                isRegister: widget.authFlowType == AuthFlowType.register,
+                              );
+                              if (mounted) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => VerifyCodePage(
+                                      phoneNumber: '$_selectedCountryCode ${_phoneController.text}',
+                                      authFlowType: widget.authFlowType,
+                                    ),
+                                  ),
+                                );
+                              }
+                            } on AccountExistsException {
+                              if (mounted) _showAccountExistsModal(context);
+                            } on AccountNotFoundException {
+                              if (mounted) _showAccountNotFoundModal(context);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString())),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        text: 'Send Verification Code',
+                        textStyle: const TextStyle(
+                          fontFamily: 'Jokker',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
-                    );
-                  },
-                  text: 'Send Verification Code',
-                  textStyle: const TextStyle(
-                      fontFamily: 'Jokker',
-                      fontWeight: FontWeight.bold,
-                    fontSize: 14
-                  ),
-                ),
               ),
             ],
           ),
@@ -147,7 +280,6 @@ class _EnterNumberPageState extends State<EnterNumberPage> {
     );
   }
 
-  // Dispose of the controller when the widget is removed from the widget tree
   @override
   void dispose() {
     _phoneController.dispose();

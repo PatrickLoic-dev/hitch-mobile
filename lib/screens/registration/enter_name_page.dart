@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Hitch/components/button.dart';
-import 'package:Hitch/screens/registration/create_password_page.dart';
-
+import 'package:Hitch/components/location_permission_modal.dart';
+import 'package:Hitch/providers/auth_provider.dart';
 
 class EnterNamePage extends StatefulWidget {
   const EnterNamePage({super.key});
@@ -11,32 +12,29 @@ class EnterNamePage extends StatefulWidget {
 }
 
 class _EnterNamePageState extends State<EnterNamePage> {
-  // Contrôleurs pour gérer le texte dans les champs de saisie
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
-            // Aligner les enfants au début (en haut) de la colonne
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Bouton de retour en haut
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
-                  // Ramène l'utilisateur à l'écran précédent
                   Navigator.of(context).pop();
                 },
               ),
               const SizedBox(height: 20),
 
-              // 2. Titre
               const Text(
                 'Enter Your name',
                 style: TextStyle(
@@ -47,7 +45,6 @@ class _EnterNamePageState extends State<EnterNamePage> {
               ),
               const SizedBox(height: 12),
 
-              // 3. Description
               const Text(
                 'Enter your first name and last name',
                 style: TextStyle(
@@ -59,9 +56,6 @@ class _EnterNamePageState extends State<EnterNamePage> {
               ),
               const SizedBox(height: 40),
 
-              // 4. Champs de saisie pour le prénom et le nom
-
-              // Champ de saisie pour le prénom
               TextField(
                 controller: _firstNameController,
                 decoration: InputDecoration(
@@ -71,9 +65,8 @@ class _EnterNamePageState extends State<EnterNamePage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20), // Espace entre les deux champs
+              const SizedBox(height: 20),
 
-              // Champ de saisie pour le nom de famille
               TextField(
                 controller: _lastNameController,
                 decoration: InputDecoration(
@@ -84,22 +77,26 @@ class _EnterNamePageState extends State<EnterNamePage> {
                 ),
               ),
 
-              // Ce Spacer pousse le bouton vers le bas de la page
               const Spacer(),
 
-              // 5. Bouton "Next" en bas de la page
               SizedBox(
-                width: double.infinity, // Pour que le bouton s'étire
+                width: double.infinity,
                 child: Button(
                   onPressed: () {
-                    print('First Name: ${_firstNameController.text}');
-                    print('Last Name: ${_lastNameController.text}');
-                    // Naviguer vers la page de création de mot de passe
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CreatePasswordPage(),
-                      ),
-                    );
+                    if (_firstNameController.text.isNotEmpty && _lastNameController.text.isNotEmpty) {
+                      authProvider.setRegistrationNames(
+                        _firstNameController.text,
+                        _lastNameController.text,
+                      );
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) {
+                          return const LocationPermissionModal();
+                        },
+                      );
+                    }
                   },
                   text: 'Next',
                   textStyle: const TextStyle(
@@ -115,7 +112,6 @@ class _EnterNamePageState extends State<EnterNamePage> {
     );
   }
 
-  // Libérer les contrôleurs lorsque le widget est supprimé de l'arbre des widgets
   @override
   void dispose() {
     _firstNameController.dispose();
