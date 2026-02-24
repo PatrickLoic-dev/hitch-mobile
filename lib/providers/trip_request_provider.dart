@@ -9,12 +9,14 @@ class TripRequestProvider with ChangeNotifier {
   PlaceSuggestion? _destination;
   DateTime? _dateTime;
   int? _seatCount;
+  double? _price;
 
   // Getters pour lire les données
   PlaceSuggestion? get departure => _departure;
   PlaceSuggestion? get destination => _destination;
   DateTime? get dateTime => _dateTime;
   int? get seatCount => _seatCount;
+  double? get price => _price;
 
   bool get isTripConfigured =>
       _departure != null && _destination != null && _dateTime != null && _seatCount != null;
@@ -22,7 +24,7 @@ class TripRequestProvider with ChangeNotifier {
   // Setters pour mettre à jour les données et notifier les auditeurs
   void setDeparture(PlaceSuggestion place) {
     _departure = place;
-    notifyListeners(); // Informe les widgets qui écoutent que les données ont changé
+    notifyListeners();
   }
 
   void setDestination(PlaceSuggestion place) {
@@ -40,12 +42,18 @@ class TripRequestProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void setPrice(double value) {
+    _price = value;
+    notifyListeners();
+  }
+
   // Pour réinitialiser le formulaire
   void clearTrip() {
     _departure = null;
     _destination = null;
     _dateTime = null;
     _seatCount = null;
+    _price = null;
     notifyListeners();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import '../config/api_client.dart';
 import '../config/constants.dart';
 import '../models/ride.dart';
@@ -13,6 +14,30 @@ class RideService {
         data: rideData,
       );
       return Ride.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<List<Ride>> searchRides({
+    required String startingLocation,
+    required String destination,
+    required double price,
+    required int seats,
+    required DateTime departureTime,
+  }) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '${ApiConstants.rides}/search',
+        queryParameters: {
+          'starting_location': startingLocation,
+          'destination': destination,
+          'price': price,
+          'seats': seats,
+          'departure_time': DateFormat('yyyy-MM-dd').format(departureTime),
+        },
+      );
+      return (response.data as List).map((json) => Ride.fromJson(json)).toList();
     } on DioException catch (e) {
       throw _handleError(e);
     }

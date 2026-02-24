@@ -6,7 +6,6 @@ import '../services/auth_service.dart';
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   
-  // Consistent storage with Android-specific options
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
@@ -41,6 +40,8 @@ class AuthProvider with ChangeNotifier {
       if (account != null) {
         _user = account;
         _isLoggedIn = true;
+      } else {
+        _isLoggedIn = false;
       }
     } catch (e) {
       _isLoggedIn = false;
@@ -132,6 +133,7 @@ class AuthProvider with ChangeNotifier {
         _isLoggedIn = true;
         notifyListeners();
       } catch (e) {
+        // Fallback for encrypted storage issues
         await _storage.deleteAll();
         await _storage.write(key: 'access_token', value: token);
         _user = Account.fromJson(accountJson);
@@ -142,16 +144,17 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // 1. Immediately update UI state
+    _isLoggedIn = false;
+    _user = null;
+    notifyListeners();
+
+    // 2. Clear storage in the background
     try {
       await _storage.delete(key: 'access_token');
-      // For thoroughness on Android, clear everything
-      await _storage.deleteAll(); 
+      await _storage.deleteAll();
     } catch (e) {
-      print("Error during storage cleanup: $e");
-    } finally {
-      _user = null;
-      _isLoggedIn = false;
-      notifyListeners();
+      print("Non-fatal error clearing storage: $e");
     }
   }
 }

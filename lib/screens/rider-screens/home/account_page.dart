@@ -96,10 +96,8 @@ class AccountPage extends StatelessWidget {
     final String memberSince = DateFormat('yyyy').format(user.createdAt);
     final int tripCount = tripProvider.trips.length;
 
-    // Construct the full image URL. Adjust this if your static files are served elsewhere.
-    final String? profilePicUrl = user.profilePicturePath != null 
-        ? "${ApiConstants.baseUrl.replaceAll('/api', '')}/uploads/profiles/${user.profilePicturePath}"
-        : null;
+    // Construct the correct profile picture URL based on your new endpoint
+    final String profilePicUrl = "${ApiConstants.baseUrl}/accounts/${user.accountId}/profile-picture";
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -132,12 +130,12 @@ class AccountPage extends StatelessWidget {
                   CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: profilePicUrl != null 
-                        ? NetworkImage(profilePicUrl)
-                        : const AssetImage('assets/images/default-avatar.jpg') as ImageProvider,
-                    child: profilePicUrl == null 
-                        ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                        : null,
+                    backgroundImage: NetworkImage(profilePicUrl),
+                    onBackgroundImageError: (exception, stackTrace) {
+                      print('Error loading profile picture: $exception');
+                    },
+                    // Fallback using child if NetworkImage fails or is loading
+                    child: null, 
                   ),
                   if (user.isVerified)
                     Container(

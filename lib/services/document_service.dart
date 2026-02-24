@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import '../config/api_client.dart';
 import '../config/constants.dart';
 import '../models/documents.dart';
@@ -10,13 +11,17 @@ class DocumentService {
     required String filePath,
     required String documentName,
     required String accountId,
+    required String fileType,
+    required DateTime issueDate,
   }) async {
     try {
       String fileName = filePath.split('/').last;
       FormData formData = FormData.fromMap({
         "file": await MultipartFile.fromFile(filePath, filename: fileName),
         "document_name": documentName,
-        "account_id": accountId,
+        "accountId": accountId,
+        "file_type": fileType,
+        "issue_date": DateFormat('yyyy-MM-dd').format(issueDate),
       });
 
       final response = await _apiClient.dio.post(

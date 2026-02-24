@@ -1,10 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:Hitch/components/button.dart';
 import 'package:Hitch/providers/auth_provider.dart';
-import 'package:Hitch/providers/trip_request_provider.dart'; // Import du Provider
+import 'package:Hitch/providers/trip_request_provider.dart';
 import 'package:Hitch/screens/rider-screens/home/trips-request/search_location_page.dart';
-import 'package:intl/intl.dart'; // Import pour le formatage de date/heure
+import 'package:Hitch/screens/driver-screens/offer-ride/pickup_location_page.dart';
+import 'package:Hitch/screens/driver-screens/offer-ride/set_price_page.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatelessWidget {
@@ -12,10 +13,10 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Le Consumer nous donne accès au provider et reconstruit l'interface
-    // quand les données changent.
     final authProvider = Provider.of<AuthProvider>(context);
-    final userName = authProvider.user?.firstName ?? 'User';
+    final user = authProvider.user;
+    final userName = user?.firstName ?? 'User';
+    final isDriver = user?.role == 'DRIVER';
 
     return Consumer<TripRequestProvider>(
       builder: (context, tripProvider, child) {
@@ -31,7 +32,6 @@ class HomePage extends StatelessWidget {
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
-                      // --- En-tête (inchangé) ---
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -79,25 +79,23 @@ class HomePage extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 26),
-                      // LE FORMULAIRE EST MAINTENANT CONSTRUIT AVEC LES DONNÉES DU PROVIDER
-                      _buildSearchForm(context, tripProvider),
+                      _buildSearchForm(context, tripProvider, isDriver),
                       const Spacer(),
-                      // --- Bouton "Find a ride" en bas de page ---
                       SizedBox(
                         width: double.infinity,
-                        // Le bouton est maintenant conditionnel
                         child: Button(
-                          text: 'Find a ride',
-                          // La logique onPressed reste la même
+                          text: isDriver ? 'Offer a ride' : 'Find a ride',
                           onPressed: tripProvider.isTripConfigured
                               ? () {
-                            print('Finding a ride with these details:');
-                            print('From: ${tripProvider.departure!.mainText}');
-                            print('To: ${tripProvider.destination!.mainText}');
-                            print('When: ${tripProvider.dateTime}');
-                            print('Seats: ${tripProvider.seatCount}');
-                          }
-                              : null, // Passe null à onPressed pour désactiver le bouton
+                                  if (isDriver) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (context) => const SetPricePage()),
+                                    );
+                                  } else {
+                                    // Logic for Passenger search
+                                  }
+                                }
+                              : null,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -112,18 +110,15 @@ class HomePage extends StatelessWidget {
     );
   }
 
- // Widget d'affichage du formulaire
-  Widget _buildSearchForm(BuildContext context, TripRequestProvider tripProvider) {
-    // Formatteurs pour la date et l'heure
-    final DateFormat dayFormatter = DateFormat('EEEE, d MMM'); // "Tuesday, 5 Dec"
-    final DateFormat timeFormatter = DateFormat('h:mm a'); // "10:30 PM"
+  Widget _buildSearchForm(BuildContext context, TripRequestProvider tripProvider, bool isDriver) {
+    final DateFormat dayFormatter = DateFormat('EEEE, d MMM');
+    final DateFormat timeFormatter = DateFormat('h:mm a');
 
     return GestureDetector(
       onTap: () async {
-        // Au clic, on efface les anciennes données et on relance le flux
         tripProvider.clearTrip();
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => const SearchLocationPage(),
+          builder: (context) => isDriver ? const PickupLocationPage() : const SearchLocationPage(),
         ));
       },
       child: Container(
@@ -203,7 +198,6 @@ class HomePage extends StatelessWidget {
               Icon(icon, color: Colors.grey.shade600, size: 20),
               const SizedBox(width: 12),
             ],
-            // Utiliser Expanded pour que le texte ne dépasse pas
             Expanded(
               child: Text(
                 hint,
@@ -213,7 +207,7 @@ class HomePage extends StatelessWidget {
                       : Colors.black,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  overflow: TextOverflow.ellipsis, // Empêche le texte de déborder
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
