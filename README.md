@@ -149,5 +149,5 @@ This project is licensed under the **MIT License** — feel free to use, modify,
 ## 👨‍💻 Author
 **Kangue Kwelle Patrick Loïc**  
 Fullstack Developer — *Spring Boot | Flutter | PostgreSQL*  
-📧 [your.email@example.com]  
-🌐 [Portfolio or LinkedIn URL]
+📧 kangueloic9@gmail.com
+🌐 https://kangueloic.me
